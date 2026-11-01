@@ -1,0 +1,359 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add room",
+        "description": "Only the essentials. Everything else (times, colors, TV, sleep …) can be set afterwards via “Configure”.",
+        "data": {
+          "name": "Room name",
+          "lights": "Lights",
+          "night_lights": "Night lights (optional)",
+          "presence_sensors": "Presence or motion sensors",
+          "dark_sensor": "Darkness sensor (optional)"
+        },
+        "data_description": {
+          "night_lights": "Only these lights are used at night and in sleep mode. Empty = all.",
+          "presence_sensors": "Lights turn on when any of these is on.",
+          "dark_sensor": "When this sensor is on, it counts as dark."
+        }
+      }
+    },
+    "error": {
+      "no_lights": "Select at least one light.",
+      "no_presence": "Select at least one sensor.",
+      "night_lights_not_in_room": "Night lights must also be selected as lights."
+    },
+    "abort": {
+      "already_configured": "This room already exists."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Settings: {room}",
+        "description": "Pick an area. Changes are applied with “Save”.",
+        "menu_options": {
+          "basis": "💡 Lights and sensors",
+          "dunkelheit": "🌙 When is it dark?",
+          "zeiten": "⏱️ Turning off and times",
+          "licht": "🎨 Brightness, color and scenes",
+          "modi": "📺 TV and sleep",
+          "ausloeser": "🚪 More triggers",
+          "haus": "🏠 House mode",
+          "speichern": "✅ Save and close"
+        }
+      },
+      "basis": {
+        "title": "Lights and sensors",
+        "description": "Which lights belong to the room, and what reports presence?",
+        "data": {
+          "lights": "Lights",
+          "night_lights": "Night lights",
+          "presence_sensors": "Presence or motion sensors"
+        },
+        "data_description": {
+          "night_lights": "Only these lights are used at night and in sleep mode. Empty = all.",
+          "presence_sensors": "Lights turn on when any of these is on."
+        }
+      },
+      "dunkelheit": {
+        "title": "When is it dark?",
+        "description": "Without darkness and lux sensor, the sun is used.",
+        "data": {
+          "dark_sensor": "Darkness sensor",
+          "lux_sensor": "Room illuminance sensor",
+          "lux_threshold": "Illuminance threshold"
+        },
+        "data_description": {
+          "dark_sensor": "When this sensor is on, it counts as dark.",
+          "lux_sensor": "Below the threshold the room counts as dark. Without darkness and lux sensor, the sun is used."
+        }
+      },
+      "zeiten": {
+        "title": "Turning off and times",
+        "description": "When lights turn off and when night starts.",
+        "data": {
+          "off_delay": "Off delay",
+          "dim_before_off": "Dim before off",
+          "learning": "Learn off delay",
+          "extended_after": "Extended presence after",
+          "extended_off_delay": "Off delay after extended presence",
+          "override_timeout": "End manual mode at the latest after",
+          "night_start": "Night starts",
+          "night_end": "Night ends"
+        },
+        "data_description": {
+          "off_delay": "How long the room must be empty before lights turn off.",
+          "dim_before_off": "Lights stay dimmed this long as a warning. 0 = off immediately.",
+          "learning": "If lights are needed again shortly after auto-off, the delay grows; it shrinks slowly after correct offs.",
+          "extended_after": "0 = off.",
+          "override_timeout": "0 = only after the room was empty."
+        }
+      },
+      "licht": {
+        "title": "Brightness, color and scenes",
+        "description": "Expand each mode. A scene replaces brightness and color. Priority: sleep, TV, night, evening, day.",
+        "data": {
+          "adaptive": "Adaptive light by sun elevation",
+          "transition": "Transition",
+          "tag": "☀️ Day",
+          "abend": "🌇 Evening",
+          "nacht": "🌙 Night",
+          "tv": "📺 TV",
+          "schlaf": "😴 Sleep"
+        },
+        "data_description": {
+          "adaptive": "Between day and evening, brightness and color temperature follow the sun elevation."
+        },
+        "sections": {
+          "tag": {
+            "name": "☀️ Day",
+            "data": {
+              "tag_brightness": "Brightness",
+              "tag_kelvin": "Color temperature",
+              "tag_scene": "Scene instead (optional)"
+            }
+          },
+          "abend": {
+            "name": "🌇 Evening",
+            "data": {
+              "abend_brightness": "Brightness",
+              "abend_kelvin": "Color temperature",
+              "abend_scene": "Scene instead (optional)"
+            }
+          },
+          "nacht": {
+            "name": "🌙 Night",
+            "data": {
+              "nacht_brightness": "Brightness",
+              "nacht_kelvin": "Color temperature",
+              "nacht_scene": "Scene instead (optional)"
+            }
+          },
+          "tv": {
+            "name": "📺 TV",
+            "data": {
+              "tv_brightness": "Brightness",
+              "tv_kelvin": "Color temperature",
+              "tv_scene": "Scene instead (optional)"
+            }
+          },
+          "schlaf": {
+            "name": "😴 Sleep",
+            "data": {
+              "schlaf_brightness": "Brightness",
+              "schlaf_kelvin": "Color temperature",
+              "schlaf_scene": "Scene instead (optional)"
+            }
+          }
+        }
+      },
+      "modi": {
+        "title": "TV and sleep",
+        "description": "All optional.",
+        "data": {
+          "media_entity": "TV",
+          "sleep_entity": "Sleep entity",
+          "bedtime": "Bedtime",
+          "winddown": "Wind down over",
+          "late_entity": "Later bedtime when on"
+        },
+        "data_description": {
+          "media_entity": "While it is on, the room counts as occupied and uses TV mode.",
+          "sleep_entity": "When on, sleep mode applies in addition to the room switch.",
+          "bedtime": "Lights dim slowly to sleep light before; at bedtime sleep mode turns on. It turns off at night end.",
+          "winddown": "Minutes before bedtime.",
+          "late_entity": "e.g. a no-school sensor: bedtime is 60 minutes later."
+        }
+      },
+      "ausloeser": {
+        "title": "More triggers",
+        "description": "All optional.",
+        "data": {
+          "trigger_sensors": "Early triggers (e.g. door contact)",
+          "path_sensors": "Night path: bed sensors",
+          "welcome_persons": "Welcome light for",
+          "blocker_entities": "Keep on while any is on"
+        },
+        "data_description": {
+          "trigger_sensors": "Turn lights on early but do not count as presence.",
+          "path_sensors": "At night, when one turns off (got up), the night lights of this room turn on. Back on = off.",
+          "welcome_persons": "When one of these people arrives home in the dark, lights turn on (at least 5 minutes).",
+          "blocker_entities": "e.g. game console, speaker or a guest switch."
+        }
+      },
+      "haus": {
+        "title": "House mode",
+        "description": "Optional. Away keeps lights off, vacation runs an evening presence simulation.",
+        "data": {
+          "house_mode_entity": "House mode",
+          "away_states": "Away values",
+          "vacation_states": "Vacation values"
+        },
+        "data_description": {
+          "house_mode_entity": "Away keeps lights off, vacation runs an evening presence simulation.",
+          "away_states": "Comma separated, case insensitive.",
+          "vacation_states": "Comma separated, case insensitive."
+        }
+      }
+    },
+    "error": {
+      "no_lights": "Select at least one light.",
+      "no_presence": "Select at least one sensor.",
+      "night_lights_not_in_room": "Night lights must also be selected as lights."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "deaktiviert": "Disabled",
+          "aus": "Off",
+          "an": "On",
+          "gedimmt": "Dimmed",
+          "manuell": "Manual",
+          "abwesend": "Away",
+          "simulation": "Simulation"
+        },
+        "state_attributes": {
+          "tagesphase": {
+            "name": "Time of day",
+            "state": {
+              "tag": "Day",
+              "abend": "Evening",
+              "nacht": "Night"
+            }
+          },
+          "anwesend": {
+            "name": "Occupied"
+          },
+          "dunkel": {
+            "name": "Dark"
+          },
+          "manuell": {
+            "name": "Manual override"
+          },
+          "ausschalt_timer_aktiv": {
+            "name": "Off timer running"
+          },
+          "modus": {
+            "name": "Mode",
+            "state": {
+              "tag": "Day",
+              "abend": "Evening",
+              "nacht": "Night",
+              "tv": "TV",
+              "schlaf": "Sleep"
+            }
+          },
+          "schlafmodus": {
+            "name": "Sleep mode"
+          },
+          "tv": {
+            "name": "TV on"
+          },
+          "letzte_aktion": {
+            "name": "Last action"
+          },
+          "laenger_anwesend": {
+            "name": "Extended presence"
+          },
+          "gelernter_zuschlag_s": {
+            "name": "Learned extra (s)"
+          },
+          "nachtpfad_aktiv": {
+            "name": "Night path active"
+          },
+          "schlafenszeit_aktiv": {
+            "name": "Bedtime active"
+          }
+        }
+      },
+      "leuchtdauer_heute": {
+        "name": "Light time today"
+      }
+    },
+    "switch": {
+      "automatik": {
+        "name": "Automation"
+      },
+      "schlafmodus": {
+        "name": "Sleep mode"
+      }
+    },
+    "button": {
+      "zuruecksetzen": {
+        "name": "Reset automation"
+      }
+    }
+  },
+  "services": {
+    "set_sleep_mode": {
+      "name": "Set sleep mode",
+      "description": "Turn sleep mode on or off for all or selected rooms.",
+      "fields": {
+        "sleep": {
+          "name": "Sleep",
+          "description": "On or off."
+        },
+        "rooms": {
+          "name": "Rooms",
+          "description": "Room names. Empty = all rooms."
+        }
+      }
+    },
+    "reset": {
+      "name": "Reset automation",
+      "description": "End manual mode in all or selected rooms.",
+      "fields": {
+        "rooms": {
+          "name": "Rooms",
+          "description": "Room names. Empty = all rooms."
+        }
+      }
+    },
+    "set_enabled": {
+      "name": "Automation on/off",
+      "description": "Turn automation on or off for all or selected rooms.",
+      "fields": {
+        "enabled": {
+          "name": "Automation",
+          "description": "On or off."
+        },
+        "rooms": {
+          "name": "Rooms",
+          "description": "Room names. Empty = all rooms."
+        }
+      }
+    },
+    "flash": {
+      "name": "Light notification",
+      "description": "Flashes the lights briefly, by default only in occupied rooms.",
+      "fields": {
+        "count": {
+          "name": "Count",
+          "description": "How often to flash."
+        },
+        "only_occupied": {
+          "name": "Occupied rooms only",
+          "description": "Only flash where someone is."
+        },
+        "rooms": {
+          "name": "Rooms",
+          "description": "Room names. Empty = all rooms."
+        }
+      }
+    }
+  },
+  "issues": {
+    "presence_stuck": {
+      "title": "Presence sensor stuck: {room}",
+      "description": "{entity} has reported presence for more than {hours} hours. Check battery, sensitivity or position. Lights in {room} stay on meanwhile."
+    },
+    "light_unavailable": {
+      "title": "Light unavailable: {room}",
+      "description": "{entity} has been unavailable for more than an hour. Check power or connection."
+    }
+  }
+}
