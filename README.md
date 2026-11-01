@@ -26,7 +26,7 @@ Manuelle Bedienung hat immer Vorrang.
 | 🎨 Helligkeit, Farbe und Szenen | Fließendes Licht, Übergang, pro Modus aufklappbar: Helligkeit, Farbtemperatur, Szene |
 | 📺 Fernsehen und Schlafen | Fernseher, Schlafmodus-Entität, Schlafenszeit, Runterdimmen, später ins Bett |
 | 🚪 Weitere Auslöser | Vorab-Auslöser, Nachtpfad, Willkommenslicht, „nicht ausschalten, solange …“ |
-| 🏠 Hausmodus | Hausmodus-Entität, Werte für abwesend und Urlaub |
+| 🏠 Abwesenheit und Hausmodus | Niemand zu Hause = abwesend, Hausmodus-Entität, Werte für abwesend und Urlaub |
 
 ## So funktioniert ein Raum
 
@@ -63,6 +63,7 @@ Manuelle Bedienung hat immer Vorrang.
 | Manuell spätestens beenden | Der manuelle Modus endet nach X Minuten, auch wenn ein Melder hängt |
 | Ausschaltzeit lernen | Standard an. Wird das Licht innerhalb von 2 Minuten nach dem automatischen Aus wieder gebraucht, steigt die Verzögerung des Raums um 50 % (bis zum 4-fachen). Nach richtigen Abschaltungen sinkt der Zuschlag um 10 %. Der Wert überlebt Neustarts |
 | Nachtpfad | Bettsensoren wählen: Wird nachts (oder im Schlafmodus) einer frei, gehen die Nachtlichter des Raums an, mindestens 10 Minuten. Ist die Person zurück im Bett, gehen sie aus |
+| Niemand zu Hause | Sind alle Personen 5 Minuten außer Haus (`zone.home` = 0), geht das Licht aus und bleibt aus, bis jemand heimkommt |
 | Hausmodus | Bei „Abwesend“ geht alles aus und bleibt aus. Bei „Urlaub“ läuft abends eine zufällige Anwesenheitssimulation |
 
 **Dunkelheit:** Dunkel ist es, wenn der Dunkel-Sensor an ist (z. B. `binary_sensor.helper_dunkel`) oder ein Lux-Sensor im Raum unter der Schwelle liegt. Ohne beides zählt der Sonnenstand.

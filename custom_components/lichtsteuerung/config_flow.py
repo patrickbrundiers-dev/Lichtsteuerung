@@ -27,6 +27,7 @@ from homeassistant.helpers import selector
 from .const import (
     CONF_ADAPTIVE,
     CONF_AWAY_STATES,
+    CONF_AWAY_WHEN_EMPTY,
     CONF_BEDTIME,
     CONF_BLOCKER_ENTITIES,
     CONF_DARK_SENSOR,
@@ -207,8 +208,9 @@ def _triggers(c: dict[str, Any]) -> Fields:
 
 
 def _house(c: dict[str, Any]) -> Fields:
-    """Hausmodus."""
+    """Abwesenheit und Hausmodus."""
     return {
+        _req(CONF_AWAY_WHEN_EMPTY, c, False): selector.BooleanSelector(),
         _opt(CONF_HOUSE_MODE_ENTITY, c): _entities(["input_select", "select"]),
         _req(CONF_AWAY_STATES, c, DEFAULT_AWAY_STATES): str,
         _req(CONF_VACATION_STATES, c, DEFAULT_VACATION_STATES): str,

@@ -39,7 +39,7 @@
           "licht": "🎨 Brightness, color and scenes",
           "modi": "📺 TV and sleep",
           "ausloeser": "🚪 More triggers",
-          "haus": "🏠 House mode",
+          "haus": "🏠 Away and house mode",
           "speichern": "✅ Save and close"
         }
       },
@@ -183,14 +183,16 @@
         }
       },
       "haus": {
-        "title": "House mode",
-        "description": "Optional. Away keeps lights off, vacation runs an evening presence simulation.",
+        "title": "Away and house mode",
+        "description": "Nobody home or house mode away keeps lights off. Vacation runs an evening presence simulation.",
         "data": {
+          "away_when_empty": "Nobody home = away",
           "house_mode_entity": "House mode",
           "away_states": "Away values",
           "vacation_states": "Vacation values"
         },
         "data_description": {
+          "away_when_empty": "When everyone has been away for 5 minutes (zone.home = 0), lights turn off and stay off until someone returns.",
           "house_mode_entity": "Away keeps lights off, vacation runs an evening presence simulation.",
           "away_states": "Comma separated, case insensitive.",
           "vacation_states": "Comma separated, case insensitive."

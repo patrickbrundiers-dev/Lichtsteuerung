@@ -731,3 +731,55 @@ async def test_lux_sensor(hass: HomeAssistant, freezer):
     hass.states.async_set(PRESENCE, "on")
     await hass.async_block_till_done()
     assert len(turn_on) == 2
+
+
+async def test_nobody_home(hass: HomeAssistant, freezer):
+    """Niemand zu Hause: nach 5 Minuten aus, kein Einschalten bis jemand kommt."""
+    freezer.move_to(dt_util.now().replace(hour=19, minute=0, second=0))
+    hass.states.async_set("sun.sun", "below_horizon")
+    hass.states.async_set("zone.home", "1")
+    hass.states.async_set(PRESENCE, "on")
+    hass.states.async_set(DARK, "on")
+    hass.states.async_set(LIGHT, "on", LIGHT_ATTRS)
+    turn_on = async_mock_service(hass, "light", "turn_on")
+    turn_off = async_mock_service(hass, "light", "turn_off")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Wohnzimmer",
+        data={},
+        options={
+            CONF_LIGHTS: [LIGHT],
+            CONF_PRESENCE_SENSORS: [PRESENCE],
+            CONF_DARK_SENSOR: DARK,
+            "away_when_empty": True,
+        },
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    hass.states.async_set("zone.home", "0")
+    await hass.async_block_till_done()
+    freezer.tick(timedelta(minutes=4))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert len(turn_off) == 0
+
+    freezer.tick(timedelta(minutes=2))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert len(turn_off) == 1
+    assert hass.states.get(STATUS).state == "abwesend"
+    _own(hass, turn_off[-1], "off", {"supported_color_modes": ["color_temp"]})
+
+    # Melder hängt / Haustier: kein Einschalten
+    hass.states.async_set(PRESENCE, "off")
+    await hass.async_block_till_done()
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    assert len(turn_on) == 0
+
+    # Jemand kommt heim
+    hass.states.async_set("zone.home", "1")
+    await hass.async_block_till_done()
+    assert len(turn_on) == 1
