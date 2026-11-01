@@ -317,3 +317,173 @@ async def test_night_phase_uses_night_lights(hass, setup_v2, freezer):
     await hass.async_block_till_done()
     assert [c.data["entity_id"] for c in turn_on] == [LIGHT]
     assert turn_on[0].data["brightness_pct"] == 5
+
+
+HOUSE = "input_select.hausmodus"
+DOOR = "binary_sensor.tuer"
+
+
+@pytest.fixture
+async def setup_v3(hass: HomeAssistant, freezer):
+    """Raum mit allen Zusatzfunktionen."""
+    freezer.move_to(dt_util.now().replace(hour=19, minute=0, second=0))
+    hass.states.async_set("sun.sun", "below_horizon", {"elevation": -10})
+    hass.states.async_set(PRESENCE, "off")
+    hass.states.async_set(DARK, "on")
+    hass.states.async_set(DOOR, "off")
+    hass.states.async_set(HOUSE, "Zuhause ")
+    hass.states.async_set(LIGHT, "off", {"supported_color_modes": ["color_temp"]})
+
+    turn_on = async_mock_service(hass, "light", "turn_on")
+    turn_off = async_mock_service(hass, "light", "turn_off")
+    scene_on = async_mock_service(hass, "scene", "turn_on")
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Wohnzimmer",
+        data={},
+        options={
+            CONF_LIGHTS: [LIGHT],
+            CONF_PRESENCE_SENSORS: [PRESENCE],
+            CONF_DARK_SENSOR: DARK,
+            CONF_OFF_DELAY: 60,
+            CONF_DIM_BEFORE_OFF: 0,
+            "adaptive": True,
+            "tv_scene": "scene.filmabend",
+            "media_entity": "input_boolean.tv",
+            "trigger_sensors": [DOOR],
+            "extended_after": 10,
+            "extended_off_delay": 900,
+            "override_timeout": 30,
+            "house_mode_entity": HOUSE,
+            "away_states": "Abwesend",
+            "vacation_states": "Urlaub",
+        },
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    return turn_on, turn_off, scene_on
+
+
+async def test_adaptive_values(hass, setup_v3):
+    """Sonnenhöhe zwischen Abend und Tag ergibt Zwischenwerte."""
+    turn_on, _, _ = setup_v3
+    hass.states.async_set("sun.sun", "below_horizon", {"elevation": 4.5})
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    # Hälfte zwischen -6° und 15°: zwischen 70 % / 2900 K und 100 % / 4000 K
+    assert turn_on[0].data["brightness_pct"] == 85
+    assert turn_on[0].data["color_temp_kelvin"] == 3450
+
+
+async def test_sun_attribute_update_does_not_resend(hass, setup_v3):
+    """Nur die Sonnenhöhe ändert sich: kein neuer Befehl außer im 5-Minuten-Takt."""
+    turn_on, _, _ = setup_v3
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    _own(hass, turn_on[0], "on")
+    hass.states.async_set("sun.sun", "below_horizon", {"elevation": -11})
+    await hass.async_block_till_done()
+    assert len(turn_on) == 1
+
+
+async def test_tv_scene(hass, setup_v3):
+    """Für TV ist eine Szene hinterlegt."""
+    _, _, scene_on = setup_v3
+    hass.states.async_set("input_boolean.tv", "on")
+    await hass.async_block_till_done()
+    assert scene_on[0].data["entity_id"] == "scene.filmabend"
+
+
+async def test_door_trigger(hass, setup_v3):
+    """Tür auf schaltet an; ohne Präsenz geht es nach der Verzögerung wieder aus."""
+    turn_on, turn_off, _ = setup_v3
+    hass.states.async_set(DOOR, "on")
+    await hass.async_block_till_done()
+    assert len(turn_on) == 1
+    _own(hass, turn_on[0], "on")
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=61))
+    await hass.async_block_till_done()
+    assert len(turn_off) == 1
+
+
+async def test_extended_presence(hass, setup_v3, freezer):
+    """Wer länger da war, bekommt die längere Ausschaltverzögerung."""
+    turn_on, turn_off, _ = setup_v3
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    _own(hass, turn_on[0], "on")
+    freezer.tick(timedelta(minutes=11))
+    hass.states.async_set(PRESENCE, "off")
+    await hass.async_block_till_done()
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=120))
+    await hass.async_block_till_done()
+    assert turn_off == []
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=901))
+    await hass.async_block_till_done()
+    assert len(turn_off) == 1
+
+
+async def test_override_timeout(hass, setup_v3, freezer):
+    """Manueller Modus endet nach der eingestellten Zeit."""
+    turn_on, _, _ = setup_v3
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    _own(hass, turn_on[0], "on")
+    hass.states.async_set(LIGHT, "on", {**LIGHT_ATTRS, "brightness": 20})
+    await hass.async_block_till_done()
+    assert hass.states.get(STATUS).state == "manuell"
+    freezer.tick(timedelta(minutes=31))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert hass.states.get(STATUS).state == "an"
+    assert len(turn_on) == 2
+
+
+async def test_away_turns_off_and_blocks(hass, setup_v3):
+    """Hausmodus abwesend: Licht aus, Präsenz schaltet nicht ein."""
+    turn_on, turn_off, _ = setup_v3
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    _own(hass, turn_on[0], "on")
+    hass.states.async_set(HOUSE, "Abwesend ")
+    await hass.async_block_till_done()
+    assert len(turn_off) == 1
+    assert hass.states.get(STATUS).state == "abwesend"
+    hass.states.async_set(PRESENCE, "off")
+    hass.states.async_set(LIGHT, "off", {"supported_color_modes": ["color_temp"]}, context=turn_off[0].context)
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    assert len(turn_on) == 1
+
+
+async def test_vacation_simulation(hass, setup_v3, freezer):
+    """Urlaub: abends wird das Licht zufällig geschaltet."""
+    turn_on, _, _ = setup_v3
+    hass.states.async_set(HOUSE, "Urlaub ")
+    await hass.async_block_till_done()
+    assert hass.states.get(STATUS).state == "simulation"
+    freezer.tick(timedelta(minutes=11))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert len(turn_on) == 1
+
+
+async def test_reset_button(hass, setup_v3):
+    """Taste beendet den manuellen Modus."""
+    turn_on, _, _ = setup_v3
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    _own(hass, turn_on[0], "on")
+    hass.states.async_set(LIGHT, "on", {**LIGHT_ATTRS, "brightness": 20})
+    await hass.async_block_till_done()
+    button = next(
+        e.entity_id
+        for e in er.async_get(hass).entities.values()
+        if e.unique_id.endswith("_zuruecksetzen")
+    )
+    await hass.services.async_call("button", "press", {"entity_id": button}, blocking=True)
+    await hass.async_block_till_done()
+    assert hass.states.get(STATUS).state == "an"
+    assert len(turn_on) == 2

@@ -20,6 +20,21 @@ CONF_TRANSITION: Final = "transition"
 CONF_NIGHT_LIGHTS: Final = "night_lights"
 CONF_MEDIA_ENTITY: Final = "media_entity"
 CONF_SLEEP_ENTITY: Final = "sleep_entity"
+CONF_ADAPTIVE: Final = "adaptive"
+CONF_HOUSE_MODE_ENTITY: Final = "house_mode_entity"
+CONF_AWAY_STATES: Final = "away_states"
+CONF_VACATION_STATES: Final = "vacation_states"
+CONF_EXTENDED_AFTER: Final = "extended_after"
+CONF_EXTENDED_OFF_DELAY: Final = "extended_off_delay"
+CONF_OVERRIDE_TIMEOUT: Final = "override_timeout"
+CONF_TRIGGER_SENSORS: Final = "trigger_sensors"
+CONF_BLOCKER_ENTITIES: Final = "blocker_entities"
+
+
+def conf_scene(phase: str) -> str:
+    """Konfigurationsschlüssel für die Szene einer Phase."""
+    return f"{phase}_scene"
+
 
 # Licht pro Tagesphase
 PHASE_DAY: Final = "tag"
@@ -50,6 +65,18 @@ DEFAULT_DIM_BEFORE_OFF: Final = 20
 DEFAULT_NIGHT_START: Final = "22:30:00"
 DEFAULT_NIGHT_END: Final = "05:30:00"
 DEFAULT_TRANSITION: Final = 1
+DEFAULT_AWAY_STATES: Final = "Abwesend"
+DEFAULT_VACATION_STATES: Final = "Urlaub"
+DEFAULT_EXTENDED_AFTER: Final = 0
+DEFAULT_EXTENDED_OFF_DELAY: Final = 600
+DEFAULT_OVERRIDE_TIMEOUT: Final = 0
+# Sonnenhöhe (Grad), ab der die Tag- bzw. Abendwerte voll gelten
+ADAPTIVE_ELEVATION_DAY: Final = 15.0
+ADAPTIVE_ELEVATION_EVENING: Final = -6.0
+ADAPTIVE_INTERVAL_MINUTES: Final = 5
+# Anwesenheitssimulation: Minuten an / aus (zufällig im Bereich)
+SIM_ON_MINUTES: Final = (15, 45)
+SIM_OFF_MINUTES: Final = (10, 40)
 DEFAULT_PHASE_SETTINGS: Final = {
     PHASE_DAY: (100, 4000),
     PHASE_EVENING: (70, 2900),
@@ -70,6 +97,16 @@ STATE_OFF: Final = "aus"
 STATE_ON: Final = "an"
 STATE_DIMMED: Final = "gedimmt"
 STATE_MANUAL: Final = "manuell"
-ROOM_STATES: Final = (STATE_DISABLED, STATE_OFF, STATE_ON, STATE_DIMMED, STATE_MANUAL)
+STATE_AWAY: Final = "abwesend"
+STATE_SIMULATION: Final = "simulation"
+ROOM_STATES: Final = (
+    STATE_DISABLED,
+    STATE_OFF,
+    STATE_ON,
+    STATE_DIMMED,
+    STATE_MANUAL,
+    STATE_AWAY,
+    STATE_SIMULATION,
+)
 
 SIGNAL_ROOM_UPDATED: Final = f"{DOMAIN}_room_updated_{{}}"

@@ -18,6 +18,21 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .const import (
+    CONF_ADAPTIVE,
+    CONF_AWAY_STATES,
+    CONF_BLOCKER_ENTITIES,
+    CONF_EXTENDED_AFTER,
+    CONF_EXTENDED_OFF_DELAY,
+    CONF_HOUSE_MODE_ENTITY,
+    CONF_OVERRIDE_TIMEOUT,
+    CONF_TRIGGER_SENSORS,
+    CONF_VACATION_STATES,
+    DEFAULT_AWAY_STATES,
+    DEFAULT_EXTENDED_AFTER,
+    DEFAULT_EXTENDED_OFF_DELAY,
+    DEFAULT_OVERRIDE_TIMEOUT,
+    DEFAULT_VACATION_STATES,
+    conf_scene,
     CONF_DARK_SENSOR,
     CONF_DIM_BEFORE_OFF,
     CONF_LIGHTS,
@@ -145,6 +160,63 @@ def _light_schema(current: dict[str, Any]) -> dict[Any, Any]:
     return fields
 
 
+def _extras_schema(current: dict[str, Any]) -> dict[Any, Any]:
+    """Zusatzfunktionen: Szenen, fließendes Licht, Hausmodus, Zeiten, Auslöser."""
+    minutes = selector.NumberSelector(
+        selector.NumberSelectorConfig(
+            min=0, max=1440, step=1, unit_of_measurement="min", mode=selector.NumberSelectorMode.BOX
+        )
+    )
+    fields: dict[Any, Any] = {
+        vol.Required(CONF_ADAPTIVE, default=current.get(CONF_ADAPTIVE, False)): selector.BooleanSelector(),
+    }
+    for phase in PHASES:
+        fields[_optional(conf_scene(phase), current)] = selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="scene")
+        )
+    fields.update(
+        {
+            _optional(CONF_TRIGGER_SENSORS, current): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="binary_sensor", multiple=True)
+            ),
+            _optional(CONF_BLOCKER_ENTITIES, current): selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    domain=["media_player", "binary_sensor", "input_boolean", "switch"],
+                    multiple=True,
+                )
+            ),
+            vol.Required(
+                CONF_EXTENDED_AFTER,
+                default=current.get(CONF_EXTENDED_AFTER, DEFAULT_EXTENDED_AFTER),
+            ): minutes,
+            vol.Required(
+                CONF_EXTENDED_OFF_DELAY,
+                default=current.get(CONF_EXTENDED_OFF_DELAY, DEFAULT_EXTENDED_OFF_DELAY),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0, max=7200, step=5, unit_of_measurement="s", mode=selector.NumberSelectorMode.BOX
+                )
+            ),
+            vol.Required(
+                CONF_OVERRIDE_TIMEOUT,
+                default=current.get(CONF_OVERRIDE_TIMEOUT, DEFAULT_OVERRIDE_TIMEOUT),
+            ): minutes,
+            _optional(CONF_HOUSE_MODE_ENTITY, current): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain=["input_select", "select"])
+            ),
+            vol.Required(
+                CONF_AWAY_STATES,
+                default=current.get(CONF_AWAY_STATES, DEFAULT_AWAY_STATES),
+            ): str,
+            vol.Required(
+                CONF_VACATION_STATES,
+                default=current.get(CONF_VACATION_STATES, DEFAULT_VACATION_STATES),
+            ): str,
+        }
+    )
+    return fields
+
+
 def _validate(user_input: dict[str, Any]) -> dict[str, str]:
     errors: dict[str, str] = {}
     if not user_input.get(CONF_LIGHTS):
@@ -193,12 +265,24 @@ class LichtsteuerungConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Schritt 2: Licht pro Tagesphase."""
         if user_input is not None:
-            data = {**self._data}
-            name = data.pop(CONF_NAME).strip()
-            return self.async_create_entry(title=name, data={}, options={**data, **user_input})
+            self._data.update(user_input)
+            return await self.async_step_extras()
 
         return self.async_show_form(
             step_id="light", data_schema=vol.Schema(_light_schema({}))
+        )
+
+    async def async_step_extras(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Schritt 3: Zusatzfunktionen."""
+        if user_input is not None:
+            data = {**self._data, **user_input}
+            name = data.pop(CONF_NAME).strip()
+            return self.async_create_entry(title=name, data={}, options=data)
+
+        return self.async_show_form(
+            step_id="extras", data_schema=vol.Schema(_extras_schema({}))
         )
 
     @staticmethod
@@ -238,8 +322,21 @@ class LichtsteuerungOptionsFlow(OptionsFlow):
         """Schritt 2: Licht pro Tagesphase."""
         current = {**self.config_entry.data, **self.config_entry.options}
         if user_input is not None:
-            return self.async_create_entry(data={**self._data, **user_input})
+            self._data.update(user_input)
+            return await self.async_step_extras()
 
         return self.async_show_form(
             step_id="light", data_schema=vol.Schema(_light_schema(current))
+        )
+
+    async def async_step_extras(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Schritt 3: Zusatzfunktionen."""
+        current = {**self.config_entry.data, **self.config_entry.options}
+        if user_input is not None:
+            return self.async_create_entry(data={**self._data, **user_input})
+
+        return self.async_show_form(
+            step_id="extras", data_schema=vol.Schema(_extras_schema(current))
         )

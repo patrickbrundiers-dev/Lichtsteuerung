@@ -46,6 +46,36 @@
           "schlaf_brightness": "Sleep: brightness",
           "schlaf_kelvin": "Sleep: color temperature"
         }
+      },
+      "extras": {
+        "title": "Extras",
+        "description": "All optional. Scenes replace brightness and color temperature for their phase.",
+        "data": {
+          "adaptive": "Adaptive light by sun elevation",
+          "trigger_sensors": "Early triggers (e.g. door contact)",
+          "blocker_entities": "Keep on while any is on",
+          "extended_after": "Extended presence after",
+          "extended_off_delay": "Off delay after extended presence",
+          "override_timeout": "End manual mode at the latest after",
+          "house_mode_entity": "House mode",
+          "away_states": "Away values",
+          "vacation_states": "Vacation values",
+          "tag_scene": "Day scene",
+          "abend_scene": "Evening scene",
+          "nacht_scene": "Night scene",
+          "tv_scene": "TV scene",
+          "schlaf_scene": "Sleep scene"
+        },
+        "data_description": {
+          "adaptive": "Between day and evening, brightness and color temperature follow the sun elevation.",
+          "trigger_sensors": "Turn lights on early but do not count as presence.",
+          "blocker_entities": "e.g. game console, speaker or a guest switch.",
+          "extended_after": "0 = off.",
+          "override_timeout": "0 = only after the room was empty.",
+          "house_mode_entity": "Away keeps lights off, vacation runs an evening presence simulation.",
+          "away_states": "Comma separated, case insensitive.",
+          "vacation_states": "Comma separated, case insensitive."
+        }
       }
     },
     "error": {
@@ -102,6 +132,36 @@
           "schlaf_brightness": "Sleep: brightness",
           "schlaf_kelvin": "Sleep: color temperature"
         }
+      },
+      "extras": {
+        "title": "Extras",
+        "description": "All optional. Scenes replace brightness and color temperature for their phase.",
+        "data": {
+          "adaptive": "Adaptive light by sun elevation",
+          "trigger_sensors": "Early triggers (e.g. door contact)",
+          "blocker_entities": "Keep on while any is on",
+          "extended_after": "Extended presence after",
+          "extended_off_delay": "Off delay after extended presence",
+          "override_timeout": "End manual mode at the latest after",
+          "house_mode_entity": "House mode",
+          "away_states": "Away values",
+          "vacation_states": "Vacation values",
+          "tag_scene": "Day scene",
+          "abend_scene": "Evening scene",
+          "nacht_scene": "Night scene",
+          "tv_scene": "TV scene",
+          "schlaf_scene": "Sleep scene"
+        },
+        "data_description": {
+          "adaptive": "Between day and evening, brightness and color temperature follow the sun elevation.",
+          "trigger_sensors": "Turn lights on early but do not count as presence.",
+          "blocker_entities": "e.g. game console, speaker or a guest switch.",
+          "extended_after": "0 = off.",
+          "override_timeout": "0 = only after the room was empty.",
+          "house_mode_entity": "Away keeps lights off, vacation runs an evening presence simulation.",
+          "away_states": "Comma separated, case insensitive.",
+          "vacation_states": "Comma separated, case insensitive."
+        }
       }
     },
     "error": {
@@ -119,7 +179,9 @@
           "aus": "Off",
           "an": "On",
           "gedimmt": "Dimmed",
-          "manuell": "Manual"
+          "manuell": "Manual",
+          "abwesend": "Away",
+          "simulation": "Simulation"
         },
         "state_attributes": {
           "tagesphase": {
@@ -160,6 +222,9 @@
           },
           "letzte_aktion": {
             "name": "Last action"
+          },
+          "laenger_anwesend": {
+            "name": "Extended presence"
           }
         }
       }
@@ -170,6 +235,11 @@
       },
       "schlafmodus": {
         "name": "Sleep mode"
+      }
+    },
+    "button": {
+      "zuruecksetzen": {
+        "name": "Reset automation"
       }
     }
   }

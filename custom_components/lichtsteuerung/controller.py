@@ -11,8 +11,9 @@ from __future__ import annotations
 
 from collections import deque
 from collections.abc import Callable
-from datetime import time
+from datetime import datetime, time, timedelta
 import logging
+import random
 import time as monotonic_time
 from typing import Any
 
@@ -45,10 +46,33 @@ from homeassistant.helpers.event import (
     async_call_later,
     async_track_state_change_event,
     async_track_time_change,
+    async_track_time_interval,
 )
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    ADAPTIVE_ELEVATION_DAY,
+    ADAPTIVE_ELEVATION_EVENING,
+    ADAPTIVE_INTERVAL_MINUTES,
+    CONF_ADAPTIVE,
+    CONF_AWAY_STATES,
+    CONF_BLOCKER_ENTITIES,
+    CONF_EXTENDED_AFTER,
+    CONF_EXTENDED_OFF_DELAY,
+    CONF_HOUSE_MODE_ENTITY,
+    CONF_OVERRIDE_TIMEOUT,
+    CONF_TRIGGER_SENSORS,
+    CONF_VACATION_STATES,
+    DEFAULT_AWAY_STATES,
+    DEFAULT_EXTENDED_AFTER,
+    DEFAULT_EXTENDED_OFF_DELAY,
+    DEFAULT_OVERRIDE_TIMEOUT,
+    DEFAULT_VACATION_STATES,
+    SIM_OFF_MINUTES,
+    SIM_ON_MINUTES,
+    STATE_AWAY,
+    STATE_SIMULATION,
+    conf_scene,
     CONF_DARK_SENSOR,
     CONF_DIM_BEFORE_OFF,
     CONF_LIGHTS,
@@ -121,6 +145,10 @@ class RoomController:
         self._own_until: dict[str, float] = {}
         self._own_contexts: deque[str] = deque(maxlen=50)
         self._off_timer: CALLBACK_TYPE | None = None
+        self._override_timer: CALLBACK_TYPE | None = None
+        self._sim_timer: CALLBACK_TYPE | None = None
+        self._occupied_since: datetime | None = None
+        self._extended = False
         self._unsubs: list[Callable[[], None]] = []
 
     # ------------------------------------------------------------------
@@ -147,6 +175,16 @@ class RoomController:
         """Präsenz- und Bewegungsmelder."""
         return list(self.config.get(CONF_PRESENCE_SENSORS, []))
 
+    @property
+    def trigger_sensors(self) -> list[str]:
+        """Vorab-Auslöser wie Türkontakte: schalten an, zählen aber nicht als belegt."""
+        return list(self.config.get(CONF_TRIGGER_SENSORS) or [])
+
+    @property
+    def blocker_entities(self) -> list[str]:
+        """Solange eine davon an ist, geht das Licht nicht aus."""
+        return list(self.config.get(CONF_BLOCKER_ENTITIES) or [])
+
     def _time(self, key: str, default: str) -> time:
         value = self.config.get(key) or default
         parsed = dt_util.parse_time(value)
@@ -162,9 +200,33 @@ class RoomController:
 
         self._unsubs.append(
             async_track_state_change_event(
-                hass, self.presence_sensors, self._handle_presence_event
+                hass,
+                self.presence_sensors + self.blocker_entities,
+                self._handle_presence_event,
             )
         )
+        if self.trigger_sensors:
+            self._unsubs.append(
+                async_track_state_change_event(
+                    hass, self.trigger_sensors, self._handle_trigger_event
+                )
+            )
+        if self.config.get(CONF_HOUSE_MODE_ENTITY):
+            self._unsubs.append(
+                async_track_state_change_event(
+                    hass,
+                    [self.config[CONF_HOUSE_MODE_ENTITY]],
+                    self._handle_house_mode_event,
+                )
+            )
+        if self.config.get(CONF_ADAPTIVE):
+            self._unsubs.append(
+                async_track_time_interval(
+                    hass,
+                    self._handle_adaptive_tick,
+                    timedelta(minutes=ADAPTIVE_INTERVAL_MINUTES),
+                )
+            )
         self._unsubs.append(
             async_track_state_change_event(hass, self.lights, self._handle_light_event)
         )
@@ -214,10 +276,15 @@ class RoomController:
                 )
             )
 
+        if self.vacation():
+            self._start_simulation()
+
     @callback
     def async_stop(self) -> None:
         """Alle Listener und Timer entfernen."""
         self._cancel_off_timer()
+        self._cancel_override_timer()
+        self._stop_simulation()
         while self._unsubs:
             self._unsubs.pop()()
 
@@ -235,11 +302,41 @@ class RoomController:
         return self._override
 
     def occupied(self) -> bool:
-        """Ist jemand im Raum? Ein laufender Fernseher zählt als anwesend."""
-        return self.tv_active() or any(
-            (s := self.hass.states.get(e)) is not None and s.state == STATE_ON
-            for e in self.presence_sensors
+        """Ist jemand im Raum? Fernseher und Blocker zählen als anwesend."""
+        return (
+            self.tv_active()
+            or any(
+                (s := self.hass.states.get(e)) is not None and s.state == STATE_ON
+                for e in self.presence_sensors
+            )
+            or any(
+                (s := self.hass.states.get(e)) is not None
+                and s.state in MEDIA_ACTIVE_STATES
+                for e in self.blocker_entities
+            )
         )
+
+    def _house_mode_in(self, key: str, default: str) -> bool:
+        entity = self.config.get(CONF_HOUSE_MODE_ENTITY)
+        if not entity:
+            return False
+        state = self.hass.states.get(entity)
+        if state is None:
+            return False
+        wanted = {
+            v.strip().casefold()
+            for v in str(self.config.get(key, default) or "").split(",")
+            if v.strip()
+        }
+        return state.state.strip().casefold() in wanted
+
+    def away(self) -> bool:
+        """Hausmodus steht auf abwesend (ohne Simulation)."""
+        return self._house_mode_in(CONF_AWAY_STATES, DEFAULT_AWAY_STATES)
+
+    def vacation(self) -> bool:
+        """Hausmodus steht auf Urlaub: Anwesenheitssimulation."""
+        return self._house_mode_in(CONF_VACATION_STATES, DEFAULT_VACATION_STATES)
 
     def tv_active(self) -> bool:
         """Läuft der Fernseher bzw. der Medienplayer?"""
@@ -331,6 +428,10 @@ class RoomController:
         """Zustand für den Status-Sensor."""
         if not self._enabled:
             return STATE_DISABLED
+        if self.vacation():
+            return STATE_SIMULATION
+        if self.away():
+            return STATE_AWAY
         if self._override:
             return STATE_MANUAL
         if self._dimmed:
@@ -351,6 +452,7 @@ class RoomController:
             "dunkel": self.is_dark(),
             "manuell": self._override,
             "ausschalt_timer_aktiv": self._off_timer is not None,
+            "laenger_anwesend": self._is_extended(),
         }
 
     @callback
@@ -365,10 +467,25 @@ class RoomController:
     def async_set_enabled(self, enabled: bool) -> None:
         """Automatik ein- oder ausschalten."""
         self._enabled = enabled
-        self._override = False
+        self._set_override(False)
         self._dimmed = False
         self._cancel_off_timer()
+        self._stop_simulation()
         if enabled:
+            if self.vacation():
+                self._start_simulation()
+            self._evaluate()
+        self._notify()
+
+    @callback
+    def async_reset(self) -> None:
+        """Manuellen Modus beenden und neu entscheiden."""
+        self._set_override(False)
+        self._dimmed = False
+        self._cancel_off_timer()
+        self._log("Automatik zurückgesetzt")
+        if self._enabled:
+            self._apply_phase_if_on()
             self._evaluate()
         self._notify()
 
@@ -377,18 +494,22 @@ class RoomController:
     # ------------------------------------------------------------------
     @callback
     def _handle_presence_event(self, event: Event[EventStateChangedData]) -> None:
-        if not self._enabled:
+        if not self._enabled or self.away() or self.vacation():
             return
         self._evaluate()
         self._notify()
 
     @callback
     def _handle_darkness_event(self, event: Event[EventStateChangedData]) -> None:
-        if not self._enabled:
+        if not self._enabled or self.away() or self.vacation():
             return
         entity_id = event.data["entity_id"]
         old: State | None = event.data["old_state"]
         new: State | None = event.data["new_state"]
+        if entity_id == SUN_ENTITY and (
+            old is None or new is None or old.state == new.state
+        ):
+            return  # Nur Attribut-Update (Sonnenhöhe), kein Auf-/Untergang
 
         # Hell geworden (Dunkel-Sensor geht aus): automatisch eingeschaltetes
         # Licht ausschalten. Gilt nur ohne Lux-Sensor im Raum, denn ein
@@ -420,16 +541,67 @@ class RoomController:
         self._mode_changed()
 
     @callback
+    def _handle_trigger_event(self, event: Event[EventStateChangedData]) -> None:
+        new: State | None = event.data["new_state"]
+        old: State | None = event.data["old_state"]
+        if new is None or new.state != STATE_ON or (old is not None and old.state == STATE_ON):
+            return
+        if not self._enabled or self.away() or self.vacation() or self._override:
+            return
+        if self._dimmed or (not self.any_light_on() and self.is_dark()):
+            self._dimmed = False
+            self.hass.async_create_task(
+                self._async_turn_on("an, weil ein Vorab-Auslöser (z. B. Tür) aktiv wurde")
+            )
+            if not self.occupied():
+                self._start_off_timer()
+            self._notify()
+
+    @callback
+    def _handle_house_mode_event(self, event: Event[EventStateChangedData]) -> None:
+        if not self._enabled:
+            return
+        self._stop_simulation()
+        self._cancel_off_timer()
+        self._set_override(False)
+        self._dimmed = False
+        if self.vacation():
+            self._log("Urlaub: Anwesenheitssimulation gestartet")
+            self._start_simulation()
+        elif self.away():
+            if self.any_light_on():
+                self.hass.async_create_task(
+                    self._async_turn_off("aus, weil niemand zu Hause ist")
+                )
+        else:
+            if self.any_light_on() and not self.occupied():
+                self.hass.async_create_task(
+                    self._async_turn_off("aus, Simulation beendet")
+                )
+            self._evaluate()
+        self._notify()
+
+    @callback
+    def _handle_adaptive_tick(self, now: Any) -> None:
+        if (
+            self._enabled
+            and not self.away()
+            and not self.vacation()
+            and self.phase() in (PHASE_DAY, PHASE_EVENING)
+        ):
+            self._apply_phase_if_on(log=False)
+
+    @callback
     def _mode_changed(self) -> None:
         """TV oder Schlafmodus hat sich geändert."""
-        if self._enabled:
+        if self._enabled and not self.away() and not self.vacation():
             self._apply_phase_if_on()
             self._evaluate()
         self._notify()
 
     @callback
     def _handle_phase_change(self, now: Any) -> None:
-        if not self._enabled:
+        if not self._enabled or self.away() or self.vacation():
             return
         self._apply_phase_if_on()
         self._notify()
@@ -454,10 +626,10 @@ class RoomController:
         _LOGGER.debug(
             "%s: manuelle Änderung an %s erkannt", self.name, event.data["entity_id"]
         )
-        if self._enabled:
+        if self._enabled and not self.vacation():
             if not self._override:
                 self._log(f"manuell bedient ({event.data['entity_id']}), Automatik pausiert")
-            self._override = True
+            self._set_override(True)
             self._dimmed = False
             self._cancel_off_timer()
             if not self.occupied():
@@ -472,7 +644,12 @@ class RoomController:
     @callback
     def _evaluate(self) -> None:
         """Licht passend zu Präsenz und Dunkelheit schalten."""
+        if self.away() or self.vacation():
+            return
         if self.occupied():
+            if self._occupied_since is None:
+                self._occupied_since = dt_util.utcnow()
+                self._extended = False
             self._cancel_off_timer()
             if self._dimmed:
                 self._dimmed = False
@@ -490,21 +667,67 @@ class RoomController:
             return
 
         # Raum ist leer
+        if self._occupied_since is not None:
+            self._extended = self._is_extended()
+            self._occupied_since = None
         if self._off_timer is None and (self.any_light_on() or self._override):
             self._start_off_timer()
 
+    def _is_extended(self) -> bool:
+        """War bzw. ist jemand länger als die eingestellte Zeit im Raum?"""
+        minutes = float(self.config.get(CONF_EXTENDED_AFTER, DEFAULT_EXTENDED_AFTER) or 0)
+        if minutes <= 0:
+            return False
+        if self._occupied_since is None:
+            return self._extended
+        return dt_util.utcnow() - self._occupied_since >= timedelta(minutes=minutes)
+
     @callback
-    def _apply_phase_if_on(self) -> None:
+    def _apply_phase_if_on(self, log: bool = True) -> None:
         if self._override or self._dimmed or not self.any_light_on():
             return
         self.hass.async_create_task(
-            self._async_turn_on(f"angepasst an Modus {self.phase()}")
+            self._async_turn_on(
+                f"angepasst an Modus {self.phase()}" if log else None
+            )
         )
+
+    @callback
+    def _set_override(self, value: bool) -> None:
+        self._override = value
+        self._cancel_override_timer()
+        minutes = float(self.config.get(CONF_OVERRIDE_TIMEOUT, DEFAULT_OVERRIDE_TIMEOUT) or 0)
+        if value and minutes > 0:
+            self._override_timer = async_call_later(
+                self.hass, minutes * 60, self._handle_override_timeout
+            )
+
+    @callback
+    def _cancel_override_timer(self) -> None:
+        if self._override_timer is not None:
+            self._override_timer()
+            self._override_timer = None
+
+    @callback
+    def _handle_override_timeout(self, _now: Any) -> None:
+        self._override_timer = None
+        if not self._override:
+            return
+        self._override = False
+        self._log("manueller Modus abgelaufen, Automatik übernimmt wieder")
+        self._apply_phase_if_on(log=False)
+        self._evaluate()
+        self._notify()
 
     @callback
     def _start_off_timer(self) -> None:
         self._cancel_off_timer()
         delay = float(self.config.get(CONF_OFF_DELAY, DEFAULT_OFF_DELAY))
+        if self._extended:
+            delay = max(
+                delay,
+                float(self.config.get(CONF_EXTENDED_OFF_DELAY, DEFAULT_EXTENDED_OFF_DELAY)),
+            )
         self._off_timer = async_call_later(self.hass, delay, self._handle_off_timer)
 
     @callback
@@ -522,7 +745,7 @@ class RoomController:
         dim_seconds = float(self.config.get(CONF_DIM_BEFORE_OFF, DEFAULT_DIM_BEFORE_OFF))
         if not self._dimmed and dim_seconds > 0 and self.any_light_on():
             self._dimmed = True
-            self._override = False
+            self._set_override(False)
             self.hass.async_create_task(self._async_dim())
             self._off_timer = async_call_later(
                 self.hass, dim_seconds, self._handle_off_timer
@@ -531,11 +754,45 @@ class RoomController:
             return
 
         self._dimmed = False
-        self._override = False
+        self._set_override(False)
+        self._extended = False
         if self.any_light_on():
             self.hass.async_create_task(
                 self._async_turn_off("aus, weil der Raum leer ist")
             )
+        self._notify()
+
+    # ------------------------------------------------------------------
+    # Anwesenheitssimulation (Hausmodus Urlaub)
+    # ------------------------------------------------------------------
+    @callback
+    def _start_simulation(self) -> None:
+        self._stop_simulation()
+        self._sim_timer = async_call_later(
+            self.hass, random.uniform(60, 600), self._handle_sim_step
+        )
+
+    @callback
+    def _stop_simulation(self) -> None:
+        if self._sim_timer is not None:
+            self._sim_timer()
+            self._sim_timer = None
+
+    @callback
+    def _handle_sim_step(self, _now: Any) -> None:
+        self._sim_timer = None
+        if not self._enabled or not self.vacation():
+            return
+        evening = self.is_dark() and self.time_phase() == PHASE_EVENING
+        if self.any_light_on():
+            self.hass.async_create_task(self._async_turn_off("Simulation: aus"))
+            wait = random.uniform(*SIM_OFF_MINUTES) if evening else 10
+        elif evening:
+            self.hass.async_create_task(self._async_turn_on("Simulation: an"))
+            wait = random.uniform(*SIM_ON_MINUTES)
+        else:
+            wait = 10
+        self._sim_timer = async_call_later(self.hass, wait * 60, self._handle_sim_step)
         self._notify()
 
     # ------------------------------------------------------------------
@@ -554,10 +811,29 @@ class RoomController:
             return True
         return monotonic_time.monotonic() < self._own_until.get(entity_id, 0)
 
-    def _light_on_data(self, entity_id: str, phase: str) -> dict[str, Any]:
+    def _phase_values(self, phase: str) -> tuple[int, int]:
         default_brightness, default_kelvin = DEFAULT_PHASE_SETTINGS[phase]
-        brightness = int(self.config.get(conf_brightness(phase), default_brightness))
-        kelvin = int(self.config.get(conf_kelvin(phase), default_kelvin))
+        return (
+            int(self.config.get(conf_brightness(phase), default_brightness)),
+            int(self.config.get(conf_kelvin(phase), default_kelvin)),
+        )
+
+    def target_values(self, phase: str) -> tuple[int, int]:
+        """Helligkeit und Farbtemperatur, bei Tag/Abend optional fließend nach Sonne."""
+        if not self.config.get(CONF_ADAPTIVE) or phase not in (PHASE_DAY, PHASE_EVENING):
+            return self._phase_values(phase)
+        sun = self.hass.states.get(SUN_ENTITY)
+        elevation = sun.attributes.get("elevation") if sun else None
+        if elevation is None:
+            return self._phase_values(phase)
+        day_b, day_k = self._phase_values(PHASE_DAY)
+        eve_b, eve_k = self._phase_values(PHASE_EVENING)
+        span = ADAPTIVE_ELEVATION_DAY - ADAPTIVE_ELEVATION_EVENING
+        f = min(1.0, max(0.0, (float(elevation) - ADAPTIVE_ELEVATION_EVENING) / span))
+        return (round(eve_b + (day_b - eve_b) * f), round(eve_k + (day_k - eve_k) * f))
+
+    def _light_on_data(self, entity_id: str, phase: str) -> dict[str, Any]:
+        brightness, kelvin = self.target_values(phase)
 
         data: dict[str, Any] = {
             ATTR_TRANSITION: float(self.config.get(CONF_TRANSITION, DEFAULT_TRANSITION))
@@ -570,8 +846,26 @@ class RoomController:
             data[ATTR_COLOR_TEMP_KELVIN] = kelvin
         return data
 
-    async def _async_turn_on(self, reason: str) -> None:
+    async def _async_turn_on(self, reason: str | None) -> None:
         phase = self.phase()
+        scene = self.config.get(conf_scene(phase))
+        if scene:
+            context = self._new_context(self.lights)
+            if reason:
+                self._log(f"{reason} ({phase}, Szene)")
+            await self.hass.services.async_call(
+                "scene",
+                "turn_on",
+                {
+                    ATTR_ENTITY_ID: scene,
+                    ATTR_TRANSITION: float(
+                        self.config.get(CONF_TRANSITION, DEFAULT_TRANSITION)
+                    ),
+                },
+                blocking=False,
+                context=context,
+            )
+            return
         targets = self.night_lights if phase in NIGHT_LIGHT_PHASES else self.lights
         others = [
             e
@@ -581,7 +875,8 @@ class RoomController:
             and s.state == STATE_ON
         ]
         context = self._new_context(self.lights)
-        self._log(f"{reason} ({phase})")
+        if reason:
+            self._log(f"{reason} ({phase})")
         for entity_id in targets:
             await self.hass.services.async_call(
                 "light",

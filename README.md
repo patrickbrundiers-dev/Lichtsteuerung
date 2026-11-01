@@ -33,13 +33,26 @@ Manuelle Bedienung hat immer Vorrang.
 
 **Lichtrollen:** Unter „Nachtlichter“ wählst du die Lichter, die nachts und im Schlafmodus leuchten. Die übrigen werden dann ausgeschaltet. Ohne Auswahl leuchten alle.
 
+**Zusatzfunktionen** (dritter Schritt der Einrichtung, alles optional):
+
+| Funktion | Was sie macht |
+| --- | --- |
+| Fließendes Licht | Zwischen Tag und Abend folgen Helligkeit und Farbtemperatur der Sonnenhöhe (von −6° bis 15°), alle 5 Minuten nachgeführt |
+| Szenen pro Modus | Statt Helligkeit/Farbtemperatur wird für Tag, Abend, Nacht, TV oder Schlaf eine eigene Szene aktiviert |
+| Vorab-Auslöser | z. B. ein Türkontakt schaltet das Licht schon beim Öffnen ein, zählt aber nicht als Anwesenheit |
+| Nicht ausschalten, solange … | Spielkonsole, Lautsprecher, Gäste-Schalter: solange eine davon läuft, bleibt das Licht an |
+| Länger anwesend | Wer länger als X Minuten im Raum war, bekommt eine längere Ausschaltverzögerung |
+| Manuell spätestens beenden | Der manuelle Modus endet nach X Minuten, auch wenn ein Melder hängt |
+| Hausmodus | Bei „Abwesend“ geht alles aus und bleibt aus. Bei „Urlaub“ läuft abends eine zufällige Anwesenheitssimulation |
+
 **Dunkelheit:** Dunkel ist es, wenn der Dunkel-Sensor an ist (z. B. `binary_sensor.helper_dunkel`) oder ein Lux-Sensor im Raum unter der Schwelle liegt. Ohne beides zählt der Sonnenstand.
 
 ## Entitäten pro Raum
 
 - `switch.lichtsteuerung_<raum>_automatik`: Automatik an/aus. Bleibt über Neustarts erhalten.
 - `switch.lichtsteuerung_<raum>_schlafmodus`: Schlafmodus an/aus. Bleibt über Neustarts erhalten.
-- `sensor.lichtsteuerung_<raum>_status`: `aus`, `an`, `gedimmt`, `manuell` oder `deaktiviert`, mit Attributen für Modus, Tagesphase, Anwesenheit, Dunkelheit und **letzte Aktion**.
+- `button.lichtsteuerung_<raum>_automatik_zurucksetzen`: beendet den manuellen Modus sofort.
+- `sensor.lichtsteuerung_<raum>_status`: `aus`, `an`, `gedimmt`, `manuell`, `abwesend`, `simulation` oder `deaktiviert`, mit Attributen für Modus, Tagesphase, Anwesenheit, Dunkelheit und **letzte Aktion**.
 
 Jede Aktion steht mit Begründung im Logbuch, z. B. „an, weil Anwesenheit erkannt und es dunkel ist (abend)“.
 
@@ -56,7 +69,6 @@ venv/bin/pytest
 
 ## Geplant
 
-- Fließende Farbtemperatur nach Sonnenstand
-- Hausmodus (Abwesend, Urlaub mit Anwesenheitssimulation)
 - Wecklicht an Schul- und Arbeitstagen
+- Anwesenheitssimulation nach echtem Verlauf (wie presence_simulation)
 - Taster und Szenen direkt pro Raum

@@ -46,6 +46,36 @@
           "schlaf_brightness": "Schlaf: Helligkeit",
           "schlaf_kelvin": "Schlaf: Farbtemperatur"
         }
+      },
+      "extras": {
+        "title": "Zusatzfunktionen",
+        "description": "Alles optional. Szenen ersetzen für ihre Phase die Werte für Helligkeit und Farbtemperatur.",
+        "data": {
+          "adaptive": "Fließendes Licht nach Sonnenstand",
+          "trigger_sensors": "Vorab-Auslöser (z. B. Türkontakt)",
+          "blocker_entities": "Nicht ausschalten, solange an",
+          "extended_after": "Länger anwesend ab",
+          "extended_off_delay": "Ausschaltverzögerung bei längerer Anwesenheit",
+          "override_timeout": "Manuellen Modus spätestens beenden nach",
+          "house_mode_entity": "Hausmodus",
+          "away_states": "Werte für abwesend",
+          "vacation_states": "Werte für Urlaub",
+          "tag_scene": "Tag: Szene",
+          "abend_scene": "Abend: Szene",
+          "nacht_scene": "Nacht: Szene",
+          "tv_scene": "TV: Szene",
+          "schlaf_scene": "Schlaf: Szene"
+        },
+        "data_description": {
+          "adaptive": "Zwischen Tag und Abend gleiten Helligkeit und Farbtemperatur mit der Sonnenhöhe, statt bei Sonnenuntergang zu springen.",
+          "trigger_sensors": "Schalten das Licht schon beim Öffnen ein, zählen aber nicht als Anwesenheit.",
+          "blocker_entities": "z. B. Spielkonsole, Lautsprecher oder ein Gäste-Schalter.",
+          "extended_after": "0 = aus. Wer so lange im Raum war, bekommt die längere Ausschaltverzögerung.",
+          "override_timeout": "0 = erst, wenn der Raum leer war.",
+          "house_mode_entity": "z. B. input_select.hausmodus. Bei abwesend bleibt alles aus, bei Urlaub läuft eine Anwesenheitssimulation am Abend.",
+          "away_states": "Kommagetrennt, Groß/Klein egal.",
+          "vacation_states": "Kommagetrennt, Groß/Klein egal."
+        }
       }
     },
     "error": {
@@ -102,6 +132,36 @@
           "schlaf_brightness": "Schlaf: Helligkeit",
           "schlaf_kelvin": "Schlaf: Farbtemperatur"
         }
+      },
+      "extras": {
+        "title": "Zusatzfunktionen",
+        "description": "Alles optional. Szenen ersetzen für ihre Phase die Werte für Helligkeit und Farbtemperatur.",
+        "data": {
+          "adaptive": "Fließendes Licht nach Sonnenstand",
+          "trigger_sensors": "Vorab-Auslöser (z. B. Türkontakt)",
+          "blocker_entities": "Nicht ausschalten, solange an",
+          "extended_after": "Länger anwesend ab",
+          "extended_off_delay": "Ausschaltverzögerung bei längerer Anwesenheit",
+          "override_timeout": "Manuellen Modus spätestens beenden nach",
+          "house_mode_entity": "Hausmodus",
+          "away_states": "Werte für abwesend",
+          "vacation_states": "Werte für Urlaub",
+          "tag_scene": "Tag: Szene",
+          "abend_scene": "Abend: Szene",
+          "nacht_scene": "Nacht: Szene",
+          "tv_scene": "TV: Szene",
+          "schlaf_scene": "Schlaf: Szene"
+        },
+        "data_description": {
+          "adaptive": "Zwischen Tag und Abend gleiten Helligkeit und Farbtemperatur mit der Sonnenhöhe, statt bei Sonnenuntergang zu springen.",
+          "trigger_sensors": "Schalten das Licht schon beim Öffnen ein, zählen aber nicht als Anwesenheit.",
+          "blocker_entities": "z. B. Spielkonsole, Lautsprecher oder ein Gäste-Schalter.",
+          "extended_after": "0 = aus. Wer so lange im Raum war, bekommt die längere Ausschaltverzögerung.",
+          "override_timeout": "0 = erst, wenn der Raum leer war.",
+          "house_mode_entity": "z. B. input_select.hausmodus. Bei abwesend bleibt alles aus, bei Urlaub läuft eine Anwesenheitssimulation am Abend.",
+          "away_states": "Kommagetrennt, Groß/Klein egal.",
+          "vacation_states": "Kommagetrennt, Groß/Klein egal."
+        }
       }
     },
     "error": {
@@ -119,7 +179,9 @@
           "aus": "Aus",
           "an": "An",
           "gedimmt": "Gedimmt",
-          "manuell": "Manuell"
+          "manuell": "Manuell",
+          "abwesend": "Abwesend",
+          "simulation": "Simulation"
         },
         "state_attributes": {
           "tagesphase": {
@@ -160,6 +222,9 @@
           },
           "letzte_aktion": {
             "name": "Letzte Aktion"
+          },
+          "laenger_anwesend": {
+            "name": "Länger anwesend"
           }
         }
       }
@@ -170,6 +235,11 @@
       },
       "schlafmodus": {
         "name": "Schlafmodus"
+      }
+    },
+    "button": {
+      "zuruecksetzen": {
+        "name": "Automatik zurücksetzen"
       }
     }
   }

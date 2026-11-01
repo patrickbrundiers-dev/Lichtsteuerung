@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant
 
 from .controller import RoomController
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.SWITCH]
+PLATFORMS: list[Platform] = [Platform.BUTTON, Platform.SENSOR, Platform.SWITCH]
 
 type LichtsteuerungConfigEntry = ConfigEntry[RoomController]
 

@@ -30,7 +30,13 @@ async def test_create_room(hass: HomeAssistant):
     assert result["step_id"] == "light"
 
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+    assert result["step_id"] == "extras"
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"adaptive": True, "abend_scene": "scene.kueche_abend"}
+    )
     assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["options"]["adaptive"] is True
+    assert result["options"]["abend_scene"] == "scene.kueche_abend"
     assert result["title"] == "Küche"
     assert result["options"]["lights"] == ["light.kochfeld"]
     assert result["options"]["abend_brightness"] == 70
@@ -52,10 +58,15 @@ async def test_create_room(hass: HomeAssistant):
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {"nacht_brightness": 10}
     )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"override_timeout": 30}
+    )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert entry.options["off_delay"] == 300
     assert entry.options["nacht_brightness"] == 10
     assert len(entry.options["lights"]) == 2
+    assert entry.options["override_timeout"] == 30
+    assert "abend_scene" not in entry.options
 
 
 async def test_requires_lights(hass: HomeAssistant):
