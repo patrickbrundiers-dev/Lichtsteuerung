@@ -111,6 +111,8 @@ from .const import (
     CONF_TRANSITION,
     DEFAULT_DIM_BEFORE_OFF,
     DEFAULT_LUX_THRESHOLD,
+    LUX_BRIGHT_FACTOR,
+    LUX_SETTLE_SECONDS,
     DEFAULT_NIGHT_END,
     DEFAULT_NIGHT_START,
     DEFAULT_OFF_DELAY,
@@ -186,6 +188,12 @@ class RoomController:
             hass, 1, f"{DOMAIN}.{entry.entry_id}"
         )
         self._unsubs: list[Callable[[], None]] = []
+        # Lux-Sensor im Raum: Wert ohne eigenes Licht und mit eigenem Licht
+        self._lights_on = False
+        self._lux_ambient: float | None = None
+        self._lux_lit: float | None = None
+        self._lux_settle_until = 0.0
+        self._lux_measure_after = 0.0
 
     # ------------------------------------------------------------------
     # Konfiguration
@@ -256,6 +264,9 @@ class RoomController:
     def async_start(self) -> None:
         """Auf Zustandsänderungen und Zeitpunkte hören."""
         hass = self.hass
+        self._lights_on = self.any_light_on()
+        if not self._lights_on:
+            self._lux_ambient = self._lux_value()
 
         self._unsubs.append(
             async_track_state_change_event(
@@ -505,12 +516,75 @@ class RoomController:
                     lux = float(state.state)
                 except ValueError:
                     return False
-                threshold = float(
-                    self.config.get(CONF_LUX_THRESHOLD, DEFAULT_LUX_THRESHOLD)
-                )
-                return lux < threshold
+                if (
+                    self._lux_ambient is not None
+                    and not self.any_light_on()
+                    and dt_util.utcnow().timestamp() < self._lux_settle_until
+                ):
+                    # Licht ist gerade erst aus, der Sensor zeigt evtl. noch
+                    # den Wert mit Lampe: den Wert von vor dem Einschalten nehmen.
+                    lux = self._lux_ambient
+                return lux < self._lux_threshold
 
         return False
+
+    @property
+    def _lux_threshold(self) -> float:
+        return float(self.config.get(CONF_LUX_THRESHOLD, DEFAULT_LUX_THRESHOLD))
+
+    def _lux_value(self) -> float | None:
+        entity_id = self.config.get(CONF_LUX_SENSOR)
+        state = self.hass.states.get(entity_id) if entity_id else None
+        if state is None:
+            return None
+        try:
+            return float(state.state)
+        except ValueError:
+            return None
+
+    @callback
+    def _track_lights_on(self) -> None:
+        """Wechsel zwischen \"alles aus\" und \"etwas an\" für den Lux-Sensor merken."""
+        now_on = self.any_light_on()
+        if now_on == self._lights_on:
+            return
+        self._lights_on = now_on
+        now = dt_util.utcnow().timestamp()
+        if now_on:
+            self._lux_lit = None
+            self._lux_measure_after = now + LUX_SETTLE_SECONDS
+        else:
+            self._lux_settle_until = now + LUX_SETTLE_SECONDS
+
+    def _check_lux_bright(self) -> bool:
+        """Brennendes Licht ausschalten, wenn es ohne Lampe hell genug ist."""
+        lux = self._lux_value()
+        if lux is None:
+            return False
+        now = dt_util.utcnow().timestamp()
+        if not self._lights_on:
+            if now >= self._lux_settle_until:
+                self._lux_ambient = lux
+            return False
+        if now < self._lux_measure_after:
+            return False
+        if self._lux_lit is None:
+            self._lux_lit = lux
+            return False
+        if self._override or self._dimmed or self._lux_ambient is None:
+            return False
+        own = max(0.0, self._lux_lit - self._lux_ambient)
+        daylight = lux - own
+        if daylight < self._lux_threshold * LUX_BRIGHT_FACTOR:
+            return False
+        self._cancel_off_timer()
+        self._lux_ambient = None  # danach zählt der echte, helle Messwert
+        self.hass.async_create_task(
+            self._async_turn_off(
+                f"aus, weil es hell genug ist (ca. {daylight:.0f} lx ohne Licht)"
+            )
+        )
+        return True
 
     def phase(self) -> str:
         """Aktiver Lichtmodus: Schlaf vor TV vor Nacht vor Abend/Tag."""
@@ -641,6 +715,10 @@ class RoomController:
             self._notify()
             return
 
+        if entity_id == self.config.get(CONF_LUX_SENSOR) and self._check_lux_bright():
+            self._notify()
+            return
+
         if entity_id == SUN_ENTITY:
             self._apply_phase_if_on()
 
@@ -760,6 +838,7 @@ class RoomController:
     @callback
     def _handle_light_event(self, event: Event[EventStateChangedData]) -> None:
         self._track_usage()
+        self._track_lights_on()
         old: State | None = event.data["old_state"]
         new: State | None = event.data["new_state"]
         if old is None or new is None:
@@ -1261,6 +1340,8 @@ class RoomController:
         transition: float | None = None,
     ) -> None:
         phase = phase or self.phase()
+        self._lux_lit = None
+        self._lux_measure_after = dt_util.utcnow().timestamp() + LUX_SETTLE_SECONDS
         scene = self.config.get(conf_scene(phase))
         if scene:
             context = self._new_context(self.lights)

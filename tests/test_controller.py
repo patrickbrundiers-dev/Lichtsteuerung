@@ -654,3 +654,80 @@ async def test_health_issue(hass, setup, freezer):
     await hass.async_block_till_done()
     issues = [i for i in ir.async_get(hass).issues.values() if i.domain == DOMAIN]
     assert [i.translation_key for i in issues] == ["presence_stuck"]
+
+
+LUX = "sensor.wohnzimmer_lux"
+
+
+async def test_lux_sensor(hass: HomeAssistant, freezer):
+    """Träger Lux-Sensor nach dem Aus und Ausschalten bei Tageslicht."""
+    freezer.move_to(dt_util.now().replace(hour=19, minute=0, second=0))
+    hass.states.async_set("sun.sun", "below_horizon")
+    hass.states.async_set(PRESENCE, "off")
+    hass.states.async_set(LUX, "10")
+    hass.states.async_set(LIGHT, "off", {"supported_color_modes": ["color_temp"]})
+    turn_on = async_mock_service(hass, "light", "turn_on")
+    turn_off = async_mock_service(hass, "light", "turn_off")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Wohnzimmer",
+        data={},
+        options={
+            CONF_LIGHTS: [LIGHT],
+            CONF_PRESENCE_SENSORS: [PRESENCE],
+            "lux_sensor": LUX,
+            "lux_threshold": 30,
+            CONF_OFF_DELAY: 60,
+            CONF_DIM_BEFORE_OFF: 0,
+        },
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    # An bei 10 lx, Lampe hebt den Sensor auf 80 lx
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    assert len(turn_on) == 1
+    _own(hass, turn_on[-1], "on")
+    hass.states.async_set(LUX, "80")
+    await hass.async_block_till_done()
+    freezer.tick(timedelta(seconds=130))
+    hass.states.async_set(LUX, "81")  # gesetzter Wert mit Lampe
+    await hass.async_block_till_done()
+    assert len(turn_off) == 0
+
+    # Raum leer -> aus, Sensor zeigt noch 81 lx
+    hass.states.async_set(PRESENCE, "off")
+    await hass.async_block_till_done()
+    freezer.tick(timedelta(seconds=61))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert len(turn_off) == 1
+    _own(hass, turn_off[-1], "off", {"supported_color_modes": ["color_temp"]})
+    await hass.async_block_till_done()
+
+    # Sofort zurück: trotz 81 lx gilt es als dunkel
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    assert len(turn_on) == 2
+    _own(hass, turn_on[-1], "on")
+    await hass.async_block_till_done()
+    freezer.tick(timedelta(seconds=130))
+    hass.states.async_set(LUX, "82")
+    await hass.async_block_till_done()
+    assert len(turn_off) == 1
+
+    # Tageslicht: Lampe ~70 lx, gemessen 150 -> ohne Lampe ~80 lx >= 60
+    hass.states.async_set(LUX, "150")
+    await hass.async_block_till_done()
+    assert len(turn_off) == 2
+    _own(hass, turn_off[-1], "off", {"supported_color_modes": ["color_temp"]})
+    await hass.async_block_till_done()
+
+    # Danach bleibt es aus, weil es wirklich hell ist
+    hass.states.async_set(PRESENCE, "off")
+    await hass.async_block_till_done()
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    assert len(turn_on) == 2
