@@ -124,6 +124,8 @@ from .const import (
     DIM_FACTOR,
     MEDIA_ACTIVE_STATES,
     NIGHT_LIGHT_PHASES,
+    BRIGHTNESS_TOLERANCE,
+    KELVIN_TOLERANCE,
     OWN_CHANGE_GRACE_SECONDS,
     PHASE_DAY,
     PHASE_EVENING,
@@ -514,9 +516,10 @@ class RoomController:
     def is_dark(self) -> bool:
         """Ist es dunkel genug für Licht?
 
-        Dunkel ist es, wenn der Dunkel-Sensor an ist oder der Lux-Sensor
-        im Raum unter dem Schwellwert liegt. Ist keins von beiden
-        eingerichtet, zählt der Sonnenstand.
+        Mit Dunkel-Sensor und Lux-Sensor müssen beide passen: draußen
+        dunkel und im Raum unter dem Schwellwert. Mit nur einem von
+        beiden entscheidet dieser. Ist keins eingerichtet, zählt der
+        Sonnenstand.
         """
         dark_sensor = self.config.get(CONF_DARK_SENSOR)
         lux_sensor = self.config.get(CONF_LUX_SENSOR)
@@ -528,7 +531,15 @@ class RoomController:
         if dark_sensor:
             state = self.hass.states.get(dark_sensor)
             if state is not None and state.state == STATE_ON:
-                return True
+                if not lux_sensor:
+                    return True
+            elif state is not None and state.state not in (
+                STATE_UNAVAILABLE,
+                STATE_UNKNOWN,
+            ):
+                # Draußen ist es hell: dann bleibt das Licht aus, auch wenn
+                # der Raum selbst gerade nur wenig Lux misst.
+                return False
 
         if lux_sensor:
             state = self.hass.states.get(lux_sensor)
@@ -1524,12 +1535,31 @@ class RoomController:
 
 
 def _meaningful_change(old: State, new: State) -> bool:
-    """Hat sich etwas geändert, das ein Mensch ausgelöst haben kann?"""
+    """Hat sich an der Lampe wirklich etwas geändert?
+
+    Manche Lampen melden alle paar Sekunden leicht schwankende Werte.
+    Kleine Abweichungen bei Helligkeit und Farbtemperatur zählen nicht.
+    """
     if old.state != new.state:
         return True
     if new.state != STATE_ON:
         return False
-    for attr in (ATTR_BRIGHTNESS, ATTR_COLOR_TEMP_KELVIN, "rgb_color", "hs_color"):
-        if old.attributes.get(attr) != new.attributes.get(attr):
+    for attr, tolerance in (
+        (ATTR_BRIGHTNESS, BRIGHTNESS_TOLERANCE),
+        (ATTR_COLOR_TEMP_KELVIN, KELVIN_TOLERANCE),
+    ):
+        before, after = old.attributes.get(attr), new.attributes.get(attr)
+        if before == after:
+            continue
+        if before is None or after is None:
             return True
+        try:
+            if abs(float(before) - float(after)) > tolerance:
+                return True
+        except (TypeError, ValueError):
+            return True
+    if new.attributes.get(ATTR_COLOR_TEMP_KELVIN) is None:
+        for attr in ("rgb_color", "hs_color"):
+            if old.attributes.get(attr) != new.attributes.get(attr):
+                return True
     return False

@@ -66,7 +66,9 @@ Manuelle Bedienung hat immer Vorrang.
 | Niemand zu Hause | Sind alle Personen 5 Minuten außer Haus (`zone.home` = 0), geht das Licht aus und bleibt aus, bis jemand heimkommt |
 | Hausmodus | Bei „Abwesend“ geht alles aus und bleibt aus. Bei „Urlaub“ läuft abends eine zufällige Anwesenheitssimulation |
 
-**Dunkelheit:** Dunkel ist es, wenn der Dunkel-Sensor an ist (z. B. `binary_sensor.helper_dunkel`) oder ein Lux-Sensor im Raum unter der Schwelle liegt. Ohne beides zählt der Sonnenstand.
+**Dunkelheit:** Sind Dunkel-Sensor (z. B. `binary_sensor.helper_dunkel`) und Lux-Sensor eingerichtet, müssen beide passen: draußen dunkel **und** im Raum unter der Lux-Schwelle. Ist nur einer eingerichtet, entscheidet dieser. Ohne beides zählt der Sonnenstand.
+
+**Manuelle Bedienung:** Lampen, die nach dem Schalten noch leicht schwankende Werte melden (bis ±5 Helligkeit oder ±60 K), gelten nicht als manuell bedient.
 
 ## Entitäten pro Raum
 
