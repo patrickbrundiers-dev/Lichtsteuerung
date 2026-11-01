@@ -1,0 +1,13 @@
+{
+  "domain": "lichtsteuerung",
+  "name": "Lichtsteuerung",
+  "codeowners": ["@patrickbrundiers-dev"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/patrickbrundiers-dev/Lichtsteuerung",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/patrickbrundiers-dev/Lichtsteuerung/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

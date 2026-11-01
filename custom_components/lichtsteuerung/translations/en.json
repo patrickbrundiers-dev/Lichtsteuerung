@@ -1,0 +1,132 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add room",
+        "description": "One entry controls the lights of one room.",
+        "data": {
+          "name": "Room name",
+          "lights": "Lights",
+          "presence_sensors": "Presence or motion sensors",
+          "dark_sensor": "Darkness sensor (optional)",
+          "lux_sensor": "Room illuminance sensor (optional)",
+          "lux_threshold": "Illuminance threshold",
+          "off_delay": "Off delay",
+          "dim_before_off": "Dim before off",
+          "night_start": "Night starts",
+          "night_end": "Night ends"
+        },
+        "data_description": {
+          "presence_sensors": "Lights turn on when any of these is on.",
+          "dark_sensor": "When this sensor is on, it counts as dark.",
+          "lux_sensor": "Below the threshold the room counts as dark. Without darkness and lux sensor, the sun is used.",
+          "off_delay": "How long the room must be empty before lights turn off.",
+          "dim_before_off": "Lights stay dimmed this long as a warning. 0 = off immediately."
+        }
+      },
+      "light": {
+        "title": "Light per time of day",
+        "description": "Night applies within the night window, evening after sunset, day otherwise.",
+        "data": {
+          "tag_brightness": "Day: brightness",
+          "tag_kelvin": "Day: color temperature",
+          "abend_brightness": "Evening: brightness",
+          "abend_kelvin": "Evening: color temperature",
+          "nacht_brightness": "Night: brightness",
+          "nacht_kelvin": "Night: color temperature",
+          "transition": "Transition"
+        }
+      }
+    },
+    "error": {
+      "no_lights": "Select at least one light.",
+      "no_presence": "Select at least one sensor."
+    },
+    "abort": {
+      "already_configured": "This room already exists."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Edit room",
+        "data": {
+          "lights": "Lights",
+          "presence_sensors": "Presence or motion sensors",
+          "dark_sensor": "Darkness sensor (optional)",
+          "lux_sensor": "Room illuminance sensor (optional)",
+          "lux_threshold": "Illuminance threshold",
+          "off_delay": "Off delay",
+          "dim_before_off": "Dim before off",
+          "night_start": "Night starts",
+          "night_end": "Night ends"
+        },
+        "data_description": {
+          "presence_sensors": "Lights turn on when any of these is on.",
+          "dark_sensor": "When this sensor is on, it counts as dark.",
+          "lux_sensor": "Below the threshold the room counts as dark. Without darkness and lux sensor, the sun is used.",
+          "off_delay": "How long the room must be empty before lights turn off.",
+          "dim_before_off": "Lights stay dimmed this long as a warning. 0 = off immediately."
+        }
+      },
+      "light": {
+        "title": "Light per time of day",
+        "description": "Night applies within the night window, evening after sunset, day otherwise.",
+        "data": {
+          "tag_brightness": "Day: brightness",
+          "tag_kelvin": "Day: color temperature",
+          "abend_brightness": "Evening: brightness",
+          "abend_kelvin": "Evening: color temperature",
+          "nacht_brightness": "Night: brightness",
+          "nacht_kelvin": "Night: color temperature",
+          "transition": "Transition"
+        }
+      }
+    },
+    "error": {
+      "no_lights": "Select at least one light.",
+      "no_presence": "Select at least one sensor."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "deaktiviert": "Disabled",
+          "aus": "Off",
+          "an": "On",
+          "gedimmt": "Dimmed",
+          "manuell": "Manual"
+        },
+        "state_attributes": {
+          "tagesphase": {
+            "name": "Time of day",
+            "state": {
+              "tag": "Day",
+              "abend": "Evening",
+              "nacht": "Night"
+            }
+          },
+          "anwesend": {
+            "name": "Occupied"
+          },
+          "dunkel": {
+            "name": "Dark"
+          },
+          "manuell": {
+            "name": "Manual override"
+          },
+          "ausschalt_timer_aktiv": {
+            "name": "Off timer running"
+          }
+        }
+      }
+    },
+    "switch": {
+      "automatik": {
+        "name": "Automation"
+      }
+    }
+  }
+}
