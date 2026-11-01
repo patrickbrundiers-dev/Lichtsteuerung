@@ -14,19 +14,25 @@
           "off_delay": "Ausschaltverzögerung",
           "dim_before_off": "Gedimmt vor dem Ausschalten",
           "night_start": "Nacht beginnt",
-          "night_end": "Nacht endet"
+          "night_end": "Nacht endet",
+          "night_lights": "Nachtlichter (optional)",
+          "media_entity": "Fernseher (optional)",
+          "sleep_entity": "Schlafmodus-Entität (optional)"
         },
         "data_description": {
           "presence_sensors": "Licht geht an, sobald einer davon an ist.",
           "dark_sensor": "Ist dieser Sensor an, gilt es als dunkel, z. B. Helper - Dunkel.",
           "lux_sensor": "Unter der Lux-Schwelle gilt der Raum als dunkel. Ohne Dunkel- und Lux-Sensor zählt der Sonnenstand.",
           "off_delay": "So lange muss der Raum leer sein, bevor das Licht ausgeht.",
-          "dim_before_off": "So lange leuchtet das Licht gedimmt als Warnung, bevor es ausgeht. 0 = sofort aus."
+          "dim_before_off": "So lange leuchtet das Licht gedimmt als Warnung, bevor es ausgeht. 0 = sofort aus.",
+          "night_lights": "Nur diese Lichter leuchten nachts und im Schlafmodus. Leer = alle.",
+          "media_entity": "Läuft er, gilt der Raum als belegt und das Licht geht in den TV-Modus. z. B. input_boolean.fernseher_an",
+          "sleep_entity": "Ist sie an, gilt der Schlafmodus zusätzlich zum Schalter des Raums."
         }
       },
       "light": {
         "title": "Licht pro Tagesphase",
-        "description": "Nacht gilt im eingestellten Nachtfenster, Abend wenn die Sonne untergegangen ist, sonst Tag.",
+        "description": "Nacht gilt im Nachtfenster, Abend nach Sonnenuntergang, sonst Tag. TV gilt, solange der Fernseher läuft, Schlaf hat Vorrang vor allem.",
         "data": {
           "tag_brightness": "Tag: Helligkeit",
           "tag_kelvin": "Tag: Farbtemperatur",
@@ -34,13 +40,18 @@
           "abend_kelvin": "Abend: Farbtemperatur",
           "nacht_brightness": "Nacht: Helligkeit",
           "nacht_kelvin": "Nacht: Farbtemperatur",
-          "transition": "Übergangszeit"
+          "transition": "Übergangszeit",
+          "tv_brightness": "TV: Helligkeit",
+          "tv_kelvin": "TV: Farbtemperatur",
+          "schlaf_brightness": "Schlaf: Helligkeit",
+          "schlaf_kelvin": "Schlaf: Farbtemperatur"
         }
       }
     },
     "error": {
       "no_lights": "Bitte mindestens ein Licht wählen.",
-      "no_presence": "Bitte mindestens einen Melder wählen."
+      "no_presence": "Bitte mindestens einen Melder wählen.",
+      "night_lights_not_in_room": "Nachtlichter müssen auch unter Lichter ausgewählt sein."
     },
     "abort": {
       "already_configured": "Diesen Raum gibt es schon."
@@ -59,19 +70,25 @@
           "off_delay": "Ausschaltverzögerung",
           "dim_before_off": "Gedimmt vor dem Ausschalten",
           "night_start": "Nacht beginnt",
-          "night_end": "Nacht endet"
+          "night_end": "Nacht endet",
+          "night_lights": "Nachtlichter (optional)",
+          "media_entity": "Fernseher (optional)",
+          "sleep_entity": "Schlafmodus-Entität (optional)"
         },
         "data_description": {
           "presence_sensors": "Licht geht an, sobald einer davon an ist.",
           "dark_sensor": "Ist dieser Sensor an, gilt es als dunkel, z. B. Helper - Dunkel.",
           "lux_sensor": "Unter der Lux-Schwelle gilt der Raum als dunkel. Ohne Dunkel- und Lux-Sensor zählt der Sonnenstand.",
           "off_delay": "So lange muss der Raum leer sein, bevor das Licht ausgeht.",
-          "dim_before_off": "So lange leuchtet das Licht gedimmt als Warnung, bevor es ausgeht. 0 = sofort aus."
+          "dim_before_off": "So lange leuchtet das Licht gedimmt als Warnung, bevor es ausgeht. 0 = sofort aus.",
+          "night_lights": "Nur diese Lichter leuchten nachts und im Schlafmodus. Leer = alle.",
+          "media_entity": "Läuft er, gilt der Raum als belegt und das Licht geht in den TV-Modus. z. B. input_boolean.fernseher_an",
+          "sleep_entity": "Ist sie an, gilt der Schlafmodus zusätzlich zum Schalter des Raums."
         }
       },
       "light": {
         "title": "Licht pro Tagesphase",
-        "description": "Nacht gilt im eingestellten Nachtfenster, Abend wenn die Sonne untergegangen ist, sonst Tag.",
+        "description": "Nacht gilt im Nachtfenster, Abend nach Sonnenuntergang, sonst Tag. TV gilt, solange der Fernseher läuft, Schlaf hat Vorrang vor allem.",
         "data": {
           "tag_brightness": "Tag: Helligkeit",
           "tag_kelvin": "Tag: Farbtemperatur",
@@ -79,13 +96,18 @@
           "abend_kelvin": "Abend: Farbtemperatur",
           "nacht_brightness": "Nacht: Helligkeit",
           "nacht_kelvin": "Nacht: Farbtemperatur",
-          "transition": "Übergangszeit"
+          "transition": "Übergangszeit",
+          "tv_brightness": "TV: Helligkeit",
+          "tv_kelvin": "TV: Farbtemperatur",
+          "schlaf_brightness": "Schlaf: Helligkeit",
+          "schlaf_kelvin": "Schlaf: Farbtemperatur"
         }
       }
     },
     "error": {
       "no_lights": "Bitte mindestens ein Licht wählen.",
-      "no_presence": "Bitte mindestens einen Melder wählen."
+      "no_presence": "Bitte mindestens einen Melder wählen.",
+      "night_lights_not_in_room": "Nachtlichter müssen auch unter Lichter ausgewählt sein."
     }
   },
   "entity": {
@@ -119,6 +141,25 @@
           },
           "ausschalt_timer_aktiv": {
             "name": "Ausschalt-Timer aktiv"
+          },
+          "modus": {
+            "name": "Modus",
+            "state": {
+              "tag": "Tag",
+              "abend": "Abend",
+              "nacht": "Nacht",
+              "tv": "TV",
+              "schlaf": "Schlaf"
+            }
+          },
+          "schlafmodus": {
+            "name": "Schlafmodus"
+          },
+          "tv": {
+            "name": "Fernseher läuft"
+          },
+          "letzte_aktion": {
+            "name": "Letzte Aktion"
           }
         }
       }
@@ -126,6 +167,9 @@
     "switch": {
       "automatik": {
         "name": "Automatik"
+      },
+      "schlafmodus": {
+        "name": "Schlafmodus"
       }
     }
   }

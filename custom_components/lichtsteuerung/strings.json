@@ -14,19 +14,25 @@
           "off_delay": "Off delay",
           "dim_before_off": "Dim before off",
           "night_start": "Night starts",
-          "night_end": "Night ends"
+          "night_end": "Night ends",
+          "night_lights": "Night lights (optional)",
+          "media_entity": "TV (optional)",
+          "sleep_entity": "Sleep entity (optional)"
         },
         "data_description": {
           "presence_sensors": "Lights turn on when any of these is on.",
           "dark_sensor": "When this sensor is on, it counts as dark.",
           "lux_sensor": "Below the threshold the room counts as dark. Without darkness and lux sensor, the sun is used.",
           "off_delay": "How long the room must be empty before lights turn off.",
-          "dim_before_off": "Lights stay dimmed this long as a warning. 0 = off immediately."
+          "dim_before_off": "Lights stay dimmed this long as a warning. 0 = off immediately.",
+          "night_lights": "Only these lights are used at night and in sleep mode. Empty = all.",
+          "media_entity": "While it is on, the room counts as occupied and uses TV mode.",
+          "sleep_entity": "When on, sleep mode applies in addition to the room switch."
         }
       },
       "light": {
         "title": "Light per time of day",
-        "description": "Night applies within the night window, evening after sunset, day otherwise.",
+        "description": "Night applies within the night window, evening after sunset, day otherwise. TV applies while the TV is on; sleep overrides everything.",
         "data": {
           "tag_brightness": "Day: brightness",
           "tag_kelvin": "Day: color temperature",
@@ -34,13 +40,18 @@
           "abend_kelvin": "Evening: color temperature",
           "nacht_brightness": "Night: brightness",
           "nacht_kelvin": "Night: color temperature",
-          "transition": "Transition"
+          "transition": "Transition",
+          "tv_brightness": "TV: brightness",
+          "tv_kelvin": "TV: color temperature",
+          "schlaf_brightness": "Sleep: brightness",
+          "schlaf_kelvin": "Sleep: color temperature"
         }
       }
     },
     "error": {
       "no_lights": "Select at least one light.",
-      "no_presence": "Select at least one sensor."
+      "no_presence": "Select at least one sensor.",
+      "night_lights_not_in_room": "Night lights must also be selected as lights."
     },
     "abort": {
       "already_configured": "This room already exists."
@@ -59,19 +70,25 @@
           "off_delay": "Off delay",
           "dim_before_off": "Dim before off",
           "night_start": "Night starts",
-          "night_end": "Night ends"
+          "night_end": "Night ends",
+          "night_lights": "Night lights (optional)",
+          "media_entity": "TV (optional)",
+          "sleep_entity": "Sleep entity (optional)"
         },
         "data_description": {
           "presence_sensors": "Lights turn on when any of these is on.",
           "dark_sensor": "When this sensor is on, it counts as dark.",
           "lux_sensor": "Below the threshold the room counts as dark. Without darkness and lux sensor, the sun is used.",
           "off_delay": "How long the room must be empty before lights turn off.",
-          "dim_before_off": "Lights stay dimmed this long as a warning. 0 = off immediately."
+          "dim_before_off": "Lights stay dimmed this long as a warning. 0 = off immediately.",
+          "night_lights": "Only these lights are used at night and in sleep mode. Empty = all.",
+          "media_entity": "While it is on, the room counts as occupied and uses TV mode.",
+          "sleep_entity": "When on, sleep mode applies in addition to the room switch."
         }
       },
       "light": {
         "title": "Light per time of day",
-        "description": "Night applies within the night window, evening after sunset, day otherwise.",
+        "description": "Night applies within the night window, evening after sunset, day otherwise. TV applies while the TV is on; sleep overrides everything.",
         "data": {
           "tag_brightness": "Day: brightness",
           "tag_kelvin": "Day: color temperature",
@@ -79,13 +96,18 @@
           "abend_kelvin": "Evening: color temperature",
           "nacht_brightness": "Night: brightness",
           "nacht_kelvin": "Night: color temperature",
-          "transition": "Transition"
+          "transition": "Transition",
+          "tv_brightness": "TV: brightness",
+          "tv_kelvin": "TV: color temperature",
+          "schlaf_brightness": "Sleep: brightness",
+          "schlaf_kelvin": "Sleep: color temperature"
         }
       }
     },
     "error": {
       "no_lights": "Select at least one light.",
-      "no_presence": "Select at least one sensor."
+      "no_presence": "Select at least one sensor.",
+      "night_lights_not_in_room": "Night lights must also be selected as lights."
     }
   },
   "entity": {
@@ -119,6 +141,25 @@
           },
           "ausschalt_timer_aktiv": {
             "name": "Off timer running"
+          },
+          "modus": {
+            "name": "Mode",
+            "state": {
+              "tag": "Day",
+              "abend": "Evening",
+              "nacht": "Night",
+              "tv": "TV",
+              "schlaf": "Sleep"
+            }
+          },
+          "schlafmodus": {
+            "name": "Sleep mode"
+          },
+          "tv": {
+            "name": "TV on"
+          },
+          "letzte_aktion": {
+            "name": "Last action"
           }
         }
       }
@@ -126,6 +167,9 @@
     "switch": {
       "automatik": {
         "name": "Automation"
+      },
+      "schlafmodus": {
+        "name": "Sleep mode"
       }
     }
   }

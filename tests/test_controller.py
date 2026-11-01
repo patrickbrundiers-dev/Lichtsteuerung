@@ -17,7 +17,9 @@ from custom_components.lichtsteuerung.const import (
     CONF_DARK_SENSOR,
     CONF_DIM_BEFORE_OFF,
     CONF_LIGHTS,
+    CONF_MEDIA_ENTITY,
     CONF_NIGHT_END,
+    CONF_NIGHT_LIGHTS,
     CONF_NIGHT_START,
     CONF_OFF_DELAY,
     CONF_PRESENCE_SENSORS,
@@ -210,3 +212,108 @@ async def test_switch_disables(hass, setup):
     await hass.async_block_till_done()
     assert turn_on == []
     assert hass.states.get(STATUS).state == "deaktiviert"
+
+
+LIGHT2 = "light.bilderleiste"
+TV = "input_boolean.fernseher_an"
+
+
+@pytest.fixture
+async def setup_v2(hass: HomeAssistant, freezer):
+    """Wohnzimmer mit Haupt- und Nachtlicht und Fernseher."""
+    freezer.move_to(dt_util.now().replace(hour=19, minute=0, second=0))
+    hass.states.async_set("sun.sun", "below_horizon")
+    hass.states.async_set(PRESENCE, "off")
+    hass.states.async_set(DARK, "on")
+    hass.states.async_set(TV, "off")
+    hass.states.async_set(LIGHT, "off", {"supported_color_modes": ["color_temp"]})
+    hass.states.async_set(LIGHT2, "off", {"supported_color_modes": ["brightness"]})
+
+    turn_on = async_mock_service(hass, "light", "turn_on")
+    turn_off = async_mock_service(hass, "light", "turn_off")
+    logbook = async_mock_service(hass, "logbook", "log")
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Wohnzimmer",
+        data={},
+        options={
+            CONF_LIGHTS: [LIGHT, LIGHT2],
+            CONF_NIGHT_LIGHTS: [LIGHT],
+            CONF_MEDIA_ENTITY: TV,
+            CONF_PRESENCE_SENSORS: [PRESENCE],
+            CONF_DARK_SENSOR: DARK,
+            CONF_OFF_DELAY: 60,
+            CONF_DIM_BEFORE_OFF: 0,
+        },
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    return turn_on, turn_off, logbook
+
+
+def _sleep_switch(hass):
+    return next(
+        e.entity_id
+        for e in er.async_get(hass).entities.values()
+        if e.unique_id.endswith("_schlafmodus")
+    )
+
+
+async def test_tv_mode(hass, setup_v2):
+    """Fernseher an: TV-Werte, und das Licht geht trotz leerem Melder nicht aus."""
+    turn_on, turn_off, _ = setup_v2
+    hass.states.async_set(TV, "on")
+    await hass.async_block_till_done()
+    assert {c.data["entity_id"] for c in turn_on} == {LIGHT, LIGHT2}
+    assert all(c.data["brightness_pct"] == 30 for c in turn_on)
+    assert "color_temp_kelvin" not in next(
+        c.data for c in turn_on if c.data["entity_id"] == LIGHT2
+    )
+    for c in turn_on:
+        hass.states.async_set(
+            c.data["entity_id"], "on", LIGHT_ATTRS, context=c.context
+        )
+    await hass.async_block_till_done()
+    assert hass.states.get(STATUS).attributes["modus"] == "tv"
+
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=300))
+    await hass.async_block_till_done()
+    assert turn_off == []
+
+
+async def test_sleep_uses_night_lights_only(hass, setup_v2):
+    """Schlafmodus: nur das Nachtlicht, das Hauptlicht geht aus."""
+    turn_on, turn_off, logbook = setup_v2
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    for c in turn_on:
+        hass.states.async_set(
+            c.data["entity_id"], "on", LIGHT_ATTRS, context=c.context
+        )
+    await hass.async_block_till_done()
+
+    await hass.services.async_call(
+        "switch", "turn_on", {"entity_id": _sleep_switch(hass)}, blocking=True
+    )
+    await hass.async_block_till_done()
+    sleep_calls = turn_on[2:]
+    assert [c.data["entity_id"] for c in sleep_calls] == [LIGHT]
+    assert sleep_calls[0].data["brightness_pct"] == 2
+    assert turn_off[-1].data["entity_id"] == [LIGHT2]
+
+    status = hass.states.get(STATUS)
+    assert status.attributes["modus"] == "schlaf"
+    assert "schlaf" in status.attributes["letzte_aktion"]
+    assert any("Anwesenheit erkannt" in c.data["message"] for c in logbook)
+
+
+async def test_night_phase_uses_night_lights(hass, setup_v2, freezer):
+    """Nachts schaltet Präsenz nur das Nachtlicht."""
+    turn_on, _, _ = setup_v2
+    freezer.move_to(dt_util.now().replace(hour=23, minute=0))
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    assert [c.data["entity_id"] for c in turn_on] == [LIGHT]
+    assert turn_on[0].data["brightness_pct"] == 5

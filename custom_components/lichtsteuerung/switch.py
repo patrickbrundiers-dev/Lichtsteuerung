@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
-from homeassistant.const import STATE_OFF
+from homeassistant.const import STATE_OFF, STATE_ON
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
@@ -20,7 +20,12 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Automatik-Schalter anlegen."""
-    async_add_entities([RoomAutomationSwitch(entry.runtime_data, "automatik")])
+    async_add_entities(
+        [
+            RoomAutomationSwitch(entry.runtime_data, "automatik"),
+            RoomSleepSwitch(entry.runtime_data, "schlafmodus"),
+        ]
+    )
 
 
 class RoomAutomationSwitch(RoomEntity, SwitchEntity, RestoreEntity):
@@ -45,3 +50,29 @@ class RoomAutomationSwitch(RoomEntity, SwitchEntity, RestoreEntity):
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Automatik ausschalten. Lichter bleiben, wie sie sind."""
         self.controller.async_set_enabled(False)
+
+
+class RoomSleepSwitch(RoomEntity, SwitchEntity, RestoreEntity):
+    """Schlafmodus: nur Nachtlichter, minimal hell und warm."""
+
+    _attr_icon = "mdi:sleep"
+
+    async def async_added_to_hass(self) -> None:
+        """Letzten Zustand wiederherstellen."""
+        await super().async_added_to_hass()
+        last = await self.async_get_last_state()
+        if last is not None and last.state == STATE_ON:
+            self.controller.async_set_sleep(True)
+
+    @property
+    def is_on(self) -> bool:
+        """Ist der Schlafmodus an?"""
+        return self.controller.sleep
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Schlafmodus einschalten."""
+        self.controller.async_set_sleep(True)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Schlafmodus ausschalten."""
+        self.controller.async_set_sleep(False)

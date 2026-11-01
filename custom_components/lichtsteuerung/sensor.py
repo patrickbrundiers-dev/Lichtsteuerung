@@ -28,6 +28,11 @@ class RoomStatusSensor(RoomEntity, SensorEntity):
     _attr_device_class = SensorDeviceClass.ENUM
     _attr_options = list(ROOM_STATES)
 
+    async def async_added_to_hass(self) -> None:
+        """Entity-ID für Logbuch-Einträge bekannt machen."""
+        await super().async_added_to_hass()
+        self.controller.status_entity_id = self.entity_id
+
     @property
     def native_value(self) -> str:
         """Aktueller Raumzustand."""

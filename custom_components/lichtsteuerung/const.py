@@ -17,12 +17,21 @@ CONF_DIM_BEFORE_OFF: Final = "dim_before_off"
 CONF_NIGHT_START: Final = "night_start"
 CONF_NIGHT_END: Final = "night_end"
 CONF_TRANSITION: Final = "transition"
+CONF_NIGHT_LIGHTS: Final = "night_lights"
+CONF_MEDIA_ENTITY: Final = "media_entity"
+CONF_SLEEP_ENTITY: Final = "sleep_entity"
 
 # Licht pro Tagesphase
 PHASE_DAY: Final = "tag"
 PHASE_EVENING: Final = "abend"
 PHASE_NIGHT: Final = "nacht"
-PHASES: Final = (PHASE_DAY, PHASE_EVENING, PHASE_NIGHT)
+PHASE_TV: Final = "tv"
+PHASE_SLEEP: Final = "schlaf"
+PHASES: Final = (PHASE_DAY, PHASE_EVENING, PHASE_NIGHT, PHASE_TV, PHASE_SLEEP)
+# Phasen, in denen nur die Nachtlichter leuchten
+NIGHT_LIGHT_PHASES: Final = (PHASE_NIGHT, PHASE_SLEEP)
+# Zustände, bei denen ein Fernseher/Medienplayer als "läuft" gilt
+MEDIA_ACTIVE_STATES: Final = ("on", "playing", "paused", "buffering")
 
 
 def conf_brightness(phase: str) -> str:
@@ -45,6 +54,8 @@ DEFAULT_PHASE_SETTINGS: Final = {
     PHASE_DAY: (100, 4000),
     PHASE_EVENING: (70, 2900),
     PHASE_NIGHT: (5, 2200),
+    PHASE_TV: (30, 2700),
+    PHASE_SLEEP: (2, 2000),
 }
 
 # Wie lange nach einem eigenen Befehl Zustandsmeldungen eines Lichts

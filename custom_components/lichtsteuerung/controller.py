@@ -54,10 +54,13 @@ from .const import (
     CONF_LIGHTS,
     CONF_LUX_SENSOR,
     CONF_LUX_THRESHOLD,
+    CONF_MEDIA_ENTITY,
     CONF_NIGHT_END,
+    CONF_NIGHT_LIGHTS,
     CONF_NIGHT_START,
     CONF_OFF_DELAY,
     CONF_PRESENCE_SENSORS,
+    CONF_SLEEP_ENTITY,
     CONF_TRANSITION,
     DEFAULT_DIM_BEFORE_OFF,
     DEFAULT_LUX_THRESHOLD,
@@ -67,10 +70,14 @@ from .const import (
     DEFAULT_PHASE_SETTINGS,
     DEFAULT_TRANSITION,
     DIM_FACTOR,
+    MEDIA_ACTIVE_STATES,
+    NIGHT_LIGHT_PHASES,
     OWN_CHANGE_GRACE_SECONDS,
     PHASE_DAY,
     PHASE_EVENING,
     PHASE_NIGHT,
+    PHASE_SLEEP,
+    PHASE_TV,
     SIGNAL_ROOM_UPDATED,
     STATE_DIMMED,
     STATE_DISABLED,
@@ -106,6 +113,9 @@ class RoomController:
         self.config: dict[str, Any] = {**entry.data, **entry.options}
 
         self._enabled = True
+        self._sleep = False
+        self._last_action: str | None = None
+        self.status_entity_id: str | None = None
         self._override = False
         self._dimmed = False
         self._own_until: dict[str, float] = {}
@@ -125,6 +135,12 @@ class RoomController:
     def lights(self) -> list[str]:
         """Gesteuerte Lichter."""
         return list(self.config.get(CONF_LIGHTS, []))
+
+    @property
+    def night_lights(self) -> list[str]:
+        """Lichter für Nacht und Schlaf. Ohne Auswahl: alle Lichter."""
+        chosen = [e for e in self.config.get(CONF_NIGHT_LIGHTS) or [] if e in self.lights]
+        return chosen or self.lights
 
     @property
     def presence_sensors(self) -> list[str]:
@@ -152,6 +168,21 @@ class RoomController:
         self._unsubs.append(
             async_track_state_change_event(hass, self.lights, self._handle_light_event)
         )
+
+        mode_entities = [
+            e
+            for e in (
+                self.config.get(CONF_MEDIA_ENTITY),
+                self.config.get(CONF_SLEEP_ENTITY),
+            )
+            if e
+        ]
+        if mode_entities:
+            self._unsubs.append(
+                async_track_state_change_event(
+                    hass, mode_entities, self._handle_mode_event
+                )
+            )
 
         darkness_entities = [
             e
@@ -204,11 +235,34 @@ class RoomController:
         return self._override
 
     def occupied(self) -> bool:
-        """Ist jemand im Raum?"""
-        return any(
+        """Ist jemand im Raum? Ein laufender Fernseher zählt als anwesend."""
+        return self.tv_active() or any(
             (s := self.hass.states.get(e)) is not None and s.state == STATE_ON
             for e in self.presence_sensors
         )
+
+    def tv_active(self) -> bool:
+        """Läuft der Fernseher bzw. der Medienplayer?"""
+        media = self.config.get(CONF_MEDIA_ENTITY)
+        if not media:
+            return False
+        state = self.hass.states.get(media)
+        return state is not None and state.state in MEDIA_ACTIVE_STATES
+
+    def sleep_active(self) -> bool:
+        """Ist der Schlafmodus an (Schalter des Raums oder externe Entität)?"""
+        if self._sleep:
+            return True
+        entity = self.config.get(CONF_SLEEP_ENTITY)
+        if not entity:
+            return False
+        state = self.hass.states.get(entity)
+        return state is not None and state.state == STATE_ON
+
+    @property
+    def sleep(self) -> bool:
+        """Zustand des Schlafmodus-Schalters."""
+        return self._sleep
 
     def any_light_on(self) -> bool:
         """Ist mindestens ein Licht an?"""
@@ -254,7 +308,15 @@ class RoomController:
         return False
 
     def phase(self) -> str:
-        """Aktuelle Tagesphase: Nacht im Nachtfenster, sonst Abend oder Tag nach Sonne."""
+        """Aktiver Lichtmodus: Schlaf vor TV vor Nacht vor Abend/Tag."""
+        if self.sleep_active():
+            return PHASE_SLEEP
+        if self.tv_active():
+            return PHASE_TV
+        return self.time_phase()
+
+    def time_phase(self) -> str:
+        """Tagesphase: Nacht im Nachtfenster, sonst Abend oder Tag nach Sonne."""
         now = dt_util.now().time()
         start = self._time(CONF_NIGHT_START, DEFAULT_NIGHT_START)
         end = self._time(CONF_NIGHT_END, DEFAULT_NIGHT_END)
@@ -280,12 +342,24 @@ class RoomController:
     def attributes(self) -> dict[str, Any]:
         """Zusatzinfos für den Status-Sensor."""
         return {
-            "tagesphase": self.phase(),
+            "modus": self.phase(),
+            "tagesphase": self.time_phase(),
+            "schlafmodus": self.sleep_active(),
+            "tv": self.tv_active(),
+            "letzte_aktion": self._last_action,
             "anwesend": self.occupied(),
             "dunkel": self.is_dark(),
             "manuell": self._override,
             "ausschalt_timer_aktiv": self._off_timer is not None,
         }
+
+    @callback
+    def async_set_sleep(self, sleep: bool) -> None:
+        """Schlafmodus des Raums ein- oder ausschalten."""
+        if self._sleep == sleep:
+            return
+        self._sleep = sleep
+        self._mode_changed()
 
     @callback
     def async_set_enabled(self, enabled: bool) -> None:
@@ -331,7 +405,7 @@ class RoomController:
         ):
             self._cancel_off_timer()
             self._dimmed = False
-            self.hass.async_create_task(self._async_turn_off())
+            self.hass.async_create_task(self._async_turn_off("aus, weil es hell geworden ist"))
             self._notify()
             return
 
@@ -339,6 +413,18 @@ class RoomController:
             self._apply_phase_if_on()
 
         self._evaluate()
+        self._notify()
+
+    @callback
+    def _handle_mode_event(self, event: Event[EventStateChangedData]) -> None:
+        self._mode_changed()
+
+    @callback
+    def _mode_changed(self) -> None:
+        """TV oder Schlafmodus hat sich geändert."""
+        if self._enabled:
+            self._apply_phase_if_on()
+            self._evaluate()
         self._notify()
 
     @callback
@@ -369,6 +455,8 @@ class RoomController:
             "%s: manuelle Änderung an %s erkannt", self.name, event.data["entity_id"]
         )
         if self._enabled:
+            if not self._override:
+                self._log(f"manuell bedient ({event.data['entity_id']}), Automatik pausiert")
             self._override = True
             self._dimmed = False
             self._cancel_off_timer()
@@ -388,12 +476,17 @@ class RoomController:
             self._cancel_off_timer()
             if self._dimmed:
                 self._dimmed = False
-                self.hass.async_create_task(self._async_turn_on())
+                self.hass.async_create_task(
+                    self._async_turn_on("wieder hell, weil jemand zurückgekommen ist")
+                )
                 return
             if self._override:
                 return
             if not self.any_light_on() and self.is_dark():
-                self.hass.async_create_task(self._async_turn_on())
+                reason = "Fernseher läuft" if self.tv_active() else "Anwesenheit erkannt"
+                self.hass.async_create_task(
+                    self._async_turn_on(f"an, weil {reason} und es dunkel ist")
+                )
             return
 
         # Raum ist leer
@@ -404,7 +497,9 @@ class RoomController:
     def _apply_phase_if_on(self) -> None:
         if self._override or self._dimmed or not self.any_light_on():
             return
-        self.hass.async_create_task(self._async_turn_on())
+        self.hass.async_create_task(
+            self._async_turn_on(f"angepasst an Modus {self.phase()}")
+        )
 
     @callback
     def _start_off_timer(self) -> None:
@@ -438,7 +533,9 @@ class RoomController:
         self._dimmed = False
         self._override = False
         if self.any_light_on():
-            self.hass.async_create_task(self._async_turn_off())
+            self.hass.async_create_task(
+                self._async_turn_off("aus, weil der Raum leer ist")
+            )
         self._notify()
 
     # ------------------------------------------------------------------
@@ -457,8 +554,7 @@ class RoomController:
             return True
         return monotonic_time.monotonic() < self._own_until.get(entity_id, 0)
 
-    def _light_on_data(self, entity_id: str) -> dict[str, Any]:
-        phase = self.phase()
+    def _light_on_data(self, entity_id: str, phase: str) -> dict[str, Any]:
         default_brightness, default_kelvin = DEFAULT_PHASE_SETTINGS[phase]
         brightness = int(self.config.get(conf_brightness(phase), default_brightness))
         kelvin = int(self.config.get(conf_kelvin(phase), default_kelvin))
@@ -474,14 +570,31 @@ class RoomController:
             data[ATTR_COLOR_TEMP_KELVIN] = kelvin
         return data
 
-    async def _async_turn_on(self) -> None:
-        lights = self.lights
-        context = self._new_context(lights)
-        for entity_id in lights:
+    async def _async_turn_on(self, reason: str) -> None:
+        phase = self.phase()
+        targets = self.night_lights if phase in NIGHT_LIGHT_PHASES else self.lights
+        others = [
+            e
+            for e in self.lights
+            if e not in targets
+            and (s := self.hass.states.get(e)) is not None
+            and s.state == STATE_ON
+        ]
+        context = self._new_context(self.lights)
+        self._log(f"{reason} ({phase})")
+        for entity_id in targets:
             await self.hass.services.async_call(
                 "light",
                 "turn_on",
-                {ATTR_ENTITY_ID: entity_id, **self._light_on_data(entity_id)},
+                {ATTR_ENTITY_ID: entity_id, **self._light_on_data(entity_id, phase)},
+                blocking=False,
+                context=context,
+            )
+        if others:
+            await self.hass.services.async_call(
+                "light",
+                "turn_off",
+                {ATTR_ENTITY_ID: others},
                 blocking=False,
                 context=context,
             )
@@ -493,6 +606,7 @@ class RoomController:
             if (s := self.hass.states.get(e)) is not None and s.state == STATE_ON
         ]
         context = self._new_context(on_lights)
+        self._log("gedimmt, weil der Raum leer ist")
         for entity_id in on_lights:
             state = self.hass.states.get(entity_id)
             brightness = state.attributes.get(ATTR_BRIGHTNESS) if state else None
@@ -510,9 +624,10 @@ class RoomController:
                 context=context,
             )
 
-    async def _async_turn_off(self) -> None:
+    async def _async_turn_off(self, reason: str) -> None:
         lights = self.lights
         context = self._new_context(lights)
+        self._log(reason)
         await self.hass.services.async_call(
             "light",
             "turn_off",
@@ -525,6 +640,26 @@ class RoomController:
             blocking=False,
             context=context,
         )
+
+    @callback
+    def _log(self, message: str) -> None:
+        """Begründung im Status-Attribut und im Logbuch festhalten."""
+        self._last_action = message
+        _LOGGER.debug("%s: %s", self.name, message)
+        if self.status_entity_id and self.hass.services.has_service("logbook", "log"):
+            self.hass.async_create_task(
+                self.hass.services.async_call(
+                    "logbook",
+                    "log",
+                    {
+                        "name": f"Lichtsteuerung {self.name}",
+                        "message": message,
+                        "entity_id": self.status_entity_id,
+                        "domain": "lichtsteuerung",
+                    },
+                    blocking=False,
+                )
+            )
 
     @callback
     def _notify(self) -> None:

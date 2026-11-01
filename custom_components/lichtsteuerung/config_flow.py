@@ -23,10 +23,13 @@ from .const import (
     CONF_LIGHTS,
     CONF_LUX_SENSOR,
     CONF_LUX_THRESHOLD,
+    CONF_MEDIA_ENTITY,
     CONF_NIGHT_END,
+    CONF_NIGHT_LIGHTS,
     CONF_NIGHT_START,
     CONF_OFF_DELAY,
     CONF_PRESENCE_SENSORS,
+    CONF_SLEEP_ENTITY,
     CONF_TRANSITION,
     DEFAULT_DIM_BEFORE_OFF,
     DEFAULT_LUX_THRESHOLD,
@@ -64,6 +67,19 @@ def _room_schema(current: dict[str, Any]) -> dict[Any, Any]:
             CONF_PRESENCE_SENSORS, default=current.get(CONF_PRESENCE_SENSORS, [])
         ): selector.EntitySelector(
             selector.EntitySelectorConfig(domain="binary_sensor", multiple=True)
+        ),
+        _optional(CONF_NIGHT_LIGHTS, current): selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="light", multiple=True)
+        ),
+        _optional(CONF_MEDIA_ENTITY, current): selector.EntitySelector(
+            selector.EntitySelectorConfig(
+                domain=["media_player", "input_boolean", "binary_sensor", "switch"]
+            )
+        ),
+        _optional(CONF_SLEEP_ENTITY, current): selector.EntitySelector(
+            selector.EntitySelectorConfig(
+                domain=["input_boolean", "binary_sensor", "switch", "schedule"]
+            )
         ),
         _optional(CONF_DARK_SENSOR, current): selector.EntitySelector(
             selector.EntitySelectorConfig(domain="binary_sensor")
@@ -135,6 +151,9 @@ def _validate(user_input: dict[str, Any]) -> dict[str, str]:
         errors[CONF_LIGHTS] = "no_lights"
     if not user_input.get(CONF_PRESENCE_SENSORS):
         errors[CONF_PRESENCE_SENSORS] = "no_presence"
+    lights = set(user_input.get(CONF_LIGHTS) or [])
+    if not set(user_input.get(CONF_NIGHT_LIGHTS) or []) <= lights:
+        errors[CONF_NIGHT_LIGHTS] = "night_lights_not_in_room"
     return errors
 
 
