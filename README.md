@@ -43,6 +43,8 @@ Manuelle Bedienung hat immer Vorrang.
 | Nicht ausschalten, solange … | Spielkonsole, Lautsprecher, Gäste-Schalter: solange eine davon läuft, bleibt das Licht an |
 | Länger anwesend | Wer länger als X Minuten im Raum war, bekommt eine längere Ausschaltverzögerung |
 | Manuell spätestens beenden | Der manuelle Modus endet nach X Minuten, auch wenn ein Melder hängt |
+| Ausschaltzeit lernen | Standard an. Wird das Licht innerhalb von 2 Minuten nach dem automatischen Aus wieder gebraucht, steigt die Verzögerung des Raums um 50 % (bis zum 4-fachen). Nach richtigen Abschaltungen sinkt der Zuschlag um 10 %. Der Wert überlebt Neustarts |
+| Nachtpfad | Bettsensoren wählen: Wird nachts (oder im Schlafmodus) einer frei, gehen die Nachtlichter des Raums an, mindestens 10 Minuten. Ist die Person zurück im Bett, gehen sie aus |
 | Hausmodus | Bei „Abwesend“ geht alles aus und bleibt aus. Bei „Urlaub“ läuft abends eine zufällige Anwesenheitssimulation |
 
 **Dunkelheit:** Dunkel ist es, wenn der Dunkel-Sensor an ist (z. B. `binary_sensor.helper_dunkel`) oder ein Lux-Sensor im Raum unter der Schwelle liegt. Ohne beides zählt der Sonnenstand.
@@ -55,6 +57,22 @@ Manuelle Bedienung hat immer Vorrang.
 - `sensor.lichtsteuerung_<raum>_status`: `aus`, `an`, `gedimmt`, `manuell`, `abwesend`, `simulation` oder `deaktiviert`, mit Attributen für Modus, Tagesphase, Anwesenheit, Dunkelheit und **letzte Aktion**.
 
 Jede Aktion steht mit Begründung im Logbuch, z. B. „an, weil Anwesenheit erkannt und es dunkel ist (abend)“.
+
+## Aktionen für das ganze Haus
+
+| Aktion | Wirkung |
+| --- | --- |
+| `lichtsteuerung.set_sleep_mode` | Schlafmodus an/aus, z. B. für eine „Gute Nacht“-Routine mit Alexa |
+| `lichtsteuerung.reset` | Manuellen Modus beenden |
+| `lichtsteuerung.set_enabled` | Automatik an/aus |
+
+Alle drei nehmen optional `rooms` (Raumnamen). Ohne `rooms` gelten sie für alle Räume.
+
+```yaml
+action: lichtsteuerung.set_sleep_mode
+data:
+  sleep: true
+```
 
 ## Umstieg von den alten Automationen
 

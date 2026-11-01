@@ -487,3 +487,89 @@ async def test_reset_button(hass, setup_v3):
     await hass.async_block_till_done()
     assert hass.states.get(STATUS).state == "an"
     assert len(turn_on) == 2
+
+
+async def test_learning_off_delay(hass, setup):
+    """Kommt jemand kurz nach dem Aus zurück, wird die Verzögerung länger."""
+    turn_on, turn_off = setup
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    _own(hass, turn_on[0], "on")
+    hass.states.async_set(PRESENCE, "off")
+    await hass.async_block_till_done()
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=61))
+    await hass.async_block_till_done()
+    _own(hass, turn_on[1], "on", {**LIGHT_ATTRS, "brightness": 54})
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=75))
+    await hass.async_block_till_done()
+    assert len(turn_off) == 1
+    hass.states.async_set(
+        LIGHT, "off", {"supported_color_modes": ["color_temp"]}, context=turn_off[0].context
+    )
+
+    # 30 s später ist wieder jemand da: Fehlabschaltung
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    status = hass.states.get(STATUS)
+    assert status.attributes["gelernter_zuschlag_s"] == 30
+    assert len(turn_on) == 3  # und das Licht ist wieder an
+
+
+PATH = "binary_sensor.bett"
+
+
+async def test_night_path(hass, freezer):
+    """Nachts aufstehen: Flur geht an, zurück im Bett: aus."""
+    freezer.move_to(dt_util.now().replace(hour=2, minute=0, second=0))
+    hass.states.async_set("sun.sun", "below_horizon")
+    hass.states.async_set(PRESENCE, "off")
+    hass.states.async_set(DARK, "on")
+    hass.states.async_set(PATH, "on")
+    hass.states.async_set(LIGHT, "off", {"supported_color_modes": ["color_temp"]})
+    turn_on = async_mock_service(hass, "light", "turn_on")
+    turn_off = async_mock_service(hass, "light", "turn_off")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Flur",
+        data={},
+        options={
+            CONF_LIGHTS: [LIGHT],
+            CONF_PRESENCE_SENSORS: [PRESENCE],
+            CONF_DARK_SENSOR: DARK,
+            CONF_OFF_DELAY: 60,
+            CONF_DIM_BEFORE_OFF: 0,
+            "path_sensors": [PATH],
+        },
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    hass.states.async_set(PATH, "off")
+    await hass.async_block_till_done()
+    assert len(turn_on) == 1
+    assert turn_on[0].data["brightness_pct"] == 5
+    _own(hass, turn_on[0], "on")
+
+    # Nach 2 Minuten noch an (Mindestdauer 10 Minuten)
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=120))
+    await hass.async_block_till_done()
+    assert turn_off == []
+
+    hass.states.async_set(PATH, "on")
+    await hass.async_block_till_done()
+    assert len(turn_off) == 1
+
+
+async def test_house_services(hass, setup):
+    """Haus-weite Aktion setzt den Schlafmodus in allen Räumen."""
+    await hass.services.async_call(
+        DOMAIN, "set_sleep_mode", {"sleep": True}, blocking=True
+    )
+    await hass.async_block_till_done()
+    assert hass.states.get(STATUS).attributes["modus"] == "schlaf"
+    await hass.services.async_call(
+        DOMAIN, "set_enabled", {"enabled": False, "rooms": ["wohnzimmer"]}, blocking=True
+    )
+    await hass.async_block_till_done()
+    assert hass.states.get(STATUS).state == "deaktiviert"

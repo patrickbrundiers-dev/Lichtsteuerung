@@ -64,7 +64,9 @@
           "abend_scene": "Abend: Szene",
           "nacht_scene": "Nacht: Szene",
           "tv_scene": "TV: Szene",
-          "schlaf_scene": "Schlaf: Szene"
+          "schlaf_scene": "Schlaf: Szene",
+          "learning": "Ausschaltzeit selbst lernen",
+          "path_sensors": "Nachtpfad: Bettsensoren"
         },
         "data_description": {
           "adaptive": "Zwischen Tag und Abend gleiten Helligkeit und Farbtemperatur mit der Sonnenhöhe, statt bei Sonnenuntergang zu springen.",
@@ -74,7 +76,9 @@
           "override_timeout": "0 = erst, wenn der Raum leer war.",
           "house_mode_entity": "z. B. input_select.hausmodus. Bei abwesend bleibt alles aus, bei Urlaub läuft eine Anwesenheitssimulation am Abend.",
           "away_states": "Kommagetrennt, Groß/Klein egal.",
-          "vacation_states": "Kommagetrennt, Groß/Klein egal."
+          "vacation_states": "Kommagetrennt, Groß/Klein egal.",
+          "learning": "Wird das Licht kurz nach dem automatischen Aus wieder gebraucht, verlängert sich die Verzögerung. Nach richtigen Abschaltungen sinkt sie langsam wieder.",
+          "path_sensors": "Nachts: Wird einer davon frei (aufgestanden), gehen die Nachtlichter dieses Raums an. Wieder belegt = aus."
         }
       }
     },
@@ -150,7 +154,9 @@
           "abend_scene": "Abend: Szene",
           "nacht_scene": "Nacht: Szene",
           "tv_scene": "TV: Szene",
-          "schlaf_scene": "Schlaf: Szene"
+          "schlaf_scene": "Schlaf: Szene",
+          "learning": "Ausschaltzeit selbst lernen",
+          "path_sensors": "Nachtpfad: Bettsensoren"
         },
         "data_description": {
           "adaptive": "Zwischen Tag und Abend gleiten Helligkeit und Farbtemperatur mit der Sonnenhöhe, statt bei Sonnenuntergang zu springen.",
@@ -160,7 +166,9 @@
           "override_timeout": "0 = erst, wenn der Raum leer war.",
           "house_mode_entity": "z. B. input_select.hausmodus. Bei abwesend bleibt alles aus, bei Urlaub läuft eine Anwesenheitssimulation am Abend.",
           "away_states": "Kommagetrennt, Groß/Klein egal.",
-          "vacation_states": "Kommagetrennt, Groß/Klein egal."
+          "vacation_states": "Kommagetrennt, Groß/Klein egal.",
+          "learning": "Wird das Licht kurz nach dem automatischen Aus wieder gebraucht, verlängert sich die Verzögerung. Nach richtigen Abschaltungen sinkt sie langsam wieder.",
+          "path_sensors": "Nachts: Wird einer davon frei (aufgestanden), gehen die Nachtlichter dieses Raums an. Wieder belegt = aus."
         }
       }
     },
@@ -225,6 +233,12 @@
           },
           "laenger_anwesend": {
             "name": "Länger anwesend"
+          },
+          "gelernter_zuschlag_s": {
+            "name": "Gelernter Zuschlag (s)"
+          },
+          "nachtpfad_aktiv": {
+            "name": "Nachtpfad aktiv"
           }
         }
       }
@@ -240,6 +254,46 @@
     "button": {
       "zuruecksetzen": {
         "name": "Automatik zurücksetzen"
+      }
+    }
+  },
+  "services": {
+    "set_sleep_mode": {
+      "name": "Schlafmodus setzen",
+      "description": "Schlafmodus für alle oder ausgewählte Räume ein- oder ausschalten.",
+      "fields": {
+        "sleep": {
+          "name": "Schlafmodus",
+          "description": "An oder aus."
+        },
+        "rooms": {
+          "name": "Räume",
+          "description": "Raumnamen. Leer = alle Räume."
+        }
+      }
+    },
+    "reset": {
+      "name": "Automatik zurücksetzen",
+      "description": "Manuellen Modus in allen oder ausgewählten Räumen beenden.",
+      "fields": {
+        "rooms": {
+          "name": "Räume",
+          "description": "Raumnamen. Leer = alle Räume."
+        }
+      }
+    },
+    "set_enabled": {
+      "name": "Automatik ein/aus",
+      "description": "Automatik für alle oder ausgewählte Räume ein- oder ausschalten.",
+      "fields": {
+        "enabled": {
+          "name": "Automatik",
+          "description": "An oder aus."
+        },
+        "rooms": {
+          "name": "Räume",
+          "description": "Raumnamen. Leer = alle Räume."
+        }
       }
     }
   }

@@ -48,9 +48,18 @@ from homeassistant.helpers.event import (
     async_track_time_change,
     async_track_time_interval,
 )
+from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CONF_LEARNING,
+    CONF_PATH_SENSORS,
+    DOMAIN,
+    LEARN_DECAY,
+    LEARN_MAX_FACTOR,
+    LEARN_STEP,
+    LEARN_WINDOW_SECONDS,
+    PATH_MIN_SECONDS,
     ADAPTIVE_ELEVATION_DAY,
     ADAPTIVE_ELEVATION_EVENING,
     ADAPTIVE_INTERVAL_MINUTES,
@@ -149,6 +158,13 @@ class RoomController:
         self._sim_timer: CALLBACK_TYPE | None = None
         self._occupied_since: datetime | None = None
         self._extended = False
+        self._learned_extra = 0.0
+        self._last_auto_off: float | None = None
+        self._learn_timer: CALLBACK_TYPE | None = None
+        self._path_active = False
+        self._store: Store[dict[str, Any]] = Store(
+            hass, 1, f"{DOMAIN}.{entry.entry_id}"
+        )
         self._unsubs: list[Callable[[], None]] = []
 
     # ------------------------------------------------------------------
@@ -190,9 +206,29 @@ class RoomController:
         parsed = dt_util.parse_time(value)
         return parsed if parsed is not None else dt_util.parse_time(default)  # type: ignore[return-value]
 
+    @property
+    def path_sensors(self) -> list[str]:
+        """Bettsensoren o. Ä.: von an nach aus = nachts aufgestanden."""
+        return list(self.config.get(CONF_PATH_SENSORS) or [])
+
+    @property
+    def learning(self) -> bool:
+        """Lernende Ausschaltzeit aktiv? Standard: ja."""
+        return bool(self.config.get(CONF_LEARNING, True))
+
+    @property
+    def learned_extra(self) -> float:
+        """Gelernter Zuschlag zur Ausschaltverzögerung in Sekunden."""
+        return self._learned_extra if self.learning else 0.0
+
     # ------------------------------------------------------------------
     # Lebenszyklus
     # ------------------------------------------------------------------
+    async def async_load(self) -> None:
+        """Gelernte Werte laden."""
+        data = await self._store.async_load()
+        if data:
+            self._learned_extra = float(data.get("learned_extra", 0.0))
     @callback
     def async_start(self) -> None:
         """Auf Zustandsänderungen und Zeitpunkte hören."""
@@ -205,6 +241,12 @@ class RoomController:
                 self._handle_presence_event,
             )
         )
+        if self.path_sensors:
+            self._unsubs.append(
+                async_track_state_change_event(
+                    hass, self.path_sensors, self._handle_path_event
+                )
+            )
         if self.trigger_sensors:
             self._unsubs.append(
                 async_track_state_change_event(
@@ -284,6 +326,7 @@ class RoomController:
         """Alle Listener und Timer entfernen."""
         self._cancel_off_timer()
         self._cancel_override_timer()
+        self._cancel_learn_timer()
         self._stop_simulation()
         while self._unsubs:
             self._unsubs.pop()()
@@ -453,6 +496,8 @@ class RoomController:
             "manuell": self._override,
             "ausschalt_timer_aktiv": self._off_timer is not None,
             "laenger_anwesend": self._is_extended(),
+            "gelernter_zuschlag_s": round(self.learned_extra),
+            "nachtpfad_aktiv": self._path_active,
         }
 
     @callback
@@ -558,6 +603,35 @@ class RoomController:
             self._notify()
 
     @callback
+    def _handle_path_event(self, event: Event[EventStateChangedData]) -> None:
+        old: State | None = event.data["old_state"]
+        new: State | None = event.data["new_state"]
+        if old is None or new is None or old.state == new.state:
+            return
+        if not self._enabled or self.away() or self.vacation() or self._override:
+            return
+        night = self.sleep_active() or self.time_phase() == PHASE_NIGHT
+        if old.state == STATE_ON and new.state == "off":
+            # Aufgestanden
+            if night and self.is_dark() and not self.any_light_on():
+                self._path_active = True
+                self.hass.async_create_task(
+                    self._async_turn_on("Nachtpfad: an, weil jemand aufgestanden ist")
+                )
+                if not self.occupied():
+                    self._start_off_timer(minimum=PATH_MIN_SECONDS)
+                self._notify()
+        elif old.state == "off" and new.state == STATE_ON and self._path_active:
+            # Zurück im Bett
+            self._path_active = False
+            if not self.occupied() and self.any_light_on():
+                self._cancel_off_timer()
+                self.hass.async_create_task(
+                    self._async_turn_off("Nachtpfad: aus, weil alle wieder im Bett sind")
+                )
+            self._notify()
+
+    @callback
     def _handle_house_mode_event(self, event: Event[EventStateChangedData]) -> None:
         if not self._enabled:
             return
@@ -626,6 +700,8 @@ class RoomController:
         _LOGGER.debug(
             "%s: manuelle Änderung an %s erkannt", self.name, event.data["entity_id"]
         )
+        if old.state != STATE_ON and new.state == STATE_ON:
+            self._check_false_off()
         if self._enabled and not self.vacation():
             if not self._override:
                 self._log(f"manuell bedient ({event.data['entity_id']}), Automatik pausiert")
@@ -647,6 +723,8 @@ class RoomController:
         if self.away() or self.vacation():
             return
         if self.occupied():
+            if not self.any_light_on():
+                self._check_false_off()
             if self._occupied_since is None:
                 self._occupied_since = dt_util.utcnow()
                 self._extended = False
@@ -719,10 +797,61 @@ class RoomController:
         self._evaluate()
         self._notify()
 
+    # ------------------------------------------------------------------
+    # Lernende Ausschaltzeit
+    # ------------------------------------------------------------------
     @callback
-    def _start_off_timer(self) -> None:
+    def _check_false_off(self) -> None:
+        """Licht wird kurz nach dem automatischen Aus wieder gebraucht?"""
+        if (
+            not self.learning
+            or self._last_auto_off is None
+            or monotonic_time.monotonic() - self._last_auto_off > LEARN_WINDOW_SECONDS
+        ):
+            return
+        self._last_auto_off = None
+        self._cancel_learn_timer()
+        base = float(self.config.get(CONF_OFF_DELAY, DEFAULT_OFF_DELAY))
+        self._learned_extra = min(
+            self._learned_extra + base * LEARN_STEP, base * (LEARN_MAX_FACTOR - 1)
+        )
+        self._log(
+            "Fehlabschaltung erkannt, Ausschaltverzögerung jetzt "
+            f"{round(base + self._learned_extra)} s"
+        )
+        self._save()
+
+    @callback
+    def _handle_learn_window(self, _now: Any) -> None:
+        """Abschaltung war richtig: Zuschlag langsam abbauen."""
+        self._learn_timer = None
+        self._last_auto_off = None
+        if self._learned_extra > 0:
+            self._learned_extra *= 1 - LEARN_DECAY
+            if self._learned_extra < 5:
+                self._learned_extra = 0.0
+            self._save()
+
+    @callback
+    def _cancel_learn_timer(self) -> None:
+        if self._learn_timer is not None:
+            self._learn_timer()
+            self._learn_timer = None
+
+    @callback
+    def _save(self) -> None:
+        self._store.async_delay_save(
+            lambda: {"learned_extra": self._learned_extra}, 10
+        )
+        self._notify()
+
+    @callback
+    def _start_off_timer(self, minimum: float = 0) -> None:
         self._cancel_off_timer()
-        delay = float(self.config.get(CONF_OFF_DELAY, DEFAULT_OFF_DELAY))
+        delay = max(
+            minimum,
+            float(self.config.get(CONF_OFF_DELAY, DEFAULT_OFF_DELAY)) + self.learned_extra,
+        )
         if self._extended:
             delay = max(
                 delay,
@@ -756,10 +885,17 @@ class RoomController:
         self._dimmed = False
         self._set_override(False)
         self._extended = False
+        self._path_active = False
         if self.any_light_on():
             self.hass.async_create_task(
                 self._async_turn_off("aus, weil der Raum leer ist")
             )
+            if self.learning:
+                self._last_auto_off = monotonic_time.monotonic()
+                self._cancel_learn_timer()
+                self._learn_timer = async_call_later(
+                    self.hass, LEARN_WINDOW_SECONDS, self._handle_learn_window
+                )
         self._notify()
 
     # ------------------------------------------------------------------

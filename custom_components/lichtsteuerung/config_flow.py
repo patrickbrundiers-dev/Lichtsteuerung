@@ -18,6 +18,8 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .const import (
+    CONF_LEARNING,
+    CONF_PATH_SENSORS,
     CONF_ADAPTIVE,
     CONF_AWAY_STATES,
     CONF_BLOCKER_ENTITIES,
@@ -169,6 +171,7 @@ def _extras_schema(current: dict[str, Any]) -> dict[Any, Any]:
     )
     fields: dict[Any, Any] = {
         vol.Required(CONF_ADAPTIVE, default=current.get(CONF_ADAPTIVE, False)): selector.BooleanSelector(),
+        vol.Required(CONF_LEARNING, default=current.get(CONF_LEARNING, True)): selector.BooleanSelector(),
     }
     for phase in PHASES:
         fields[_optional(conf_scene(phase), current)] = selector.EntitySelector(
@@ -177,6 +180,9 @@ def _extras_schema(current: dict[str, Any]) -> dict[Any, Any]:
     fields.update(
         {
             _optional(CONF_TRIGGER_SENSORS, current): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="binary_sensor", multiple=True)
+            ),
+            _optional(CONF_PATH_SENSORS, current): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="binary_sensor", multiple=True)
             ),
             _optional(CONF_BLOCKER_ENTITIES, current): selector.EntitySelector(

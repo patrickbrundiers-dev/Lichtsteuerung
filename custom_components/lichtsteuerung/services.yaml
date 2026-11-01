@@ -1,0 +1,30 @@
+set_sleep_mode:
+  fields:
+    sleep:
+      required: true
+      example: true
+      selector:
+        boolean:
+    rooms:
+      example: "Wohnzimmer, Schlafzimmer"
+      selector:
+        text:
+          multiple: true
+
+reset:
+  fields:
+    rooms:
+      selector:
+        text:
+          multiple: true
+
+set_enabled:
+  fields:
+    enabled:
+      required: true
+      selector:
+        boolean:
+    rooms:
+      selector:
+        text:
+          multiple: true

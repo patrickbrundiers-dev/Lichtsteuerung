@@ -29,6 +29,8 @@ CONF_EXTENDED_OFF_DELAY: Final = "extended_off_delay"
 CONF_OVERRIDE_TIMEOUT: Final = "override_timeout"
 CONF_TRIGGER_SENSORS: Final = "trigger_sensors"
 CONF_BLOCKER_ENTITIES: Final = "blocker_entities"
+CONF_LEARNING: Final = "learning"
+CONF_PATH_SENSORS: Final = "path_sensors"
 
 
 def conf_scene(phase: str) -> str:
@@ -74,6 +76,14 @@ DEFAULT_OVERRIDE_TIMEOUT: Final = 0
 ADAPTIVE_ELEVATION_DAY: Final = 15.0
 ADAPTIVE_ELEVATION_EVENING: Final = -6.0
 ADAPTIVE_INTERVAL_MINUTES: Final = 5
+# Lernende Ausschaltzeit: Wiedereinschalten innerhalb dieses Fensters nach
+# dem automatischen Aus gilt als Fehlabschaltung.
+LEARN_WINDOW_SECONDS: Final = 120
+LEARN_STEP: Final = 0.5  # pro Fehlabschaltung + 50 % der Grundverzögerung
+LEARN_MAX_FACTOR: Final = 4.0  # höchstens 4-fache Grundverzögerung
+LEARN_DECAY: Final = 0.1  # pro korrekter Abschaltung 10 % weniger Zuschlag
+# Nachtpfad: so lange bleibt das Licht mindestens an
+PATH_MIN_SECONDS: Final = 600
 # Anwesenheitssimulation: Minuten an / aus (zufällig im Bereich)
 SIM_ON_MINUTES: Final = (15, 45)
 SIM_OFF_MINUTES: Final = (10, 40)

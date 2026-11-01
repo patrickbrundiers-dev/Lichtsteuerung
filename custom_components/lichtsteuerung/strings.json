@@ -64,7 +64,9 @@
           "abend_scene": "Evening scene",
           "nacht_scene": "Night scene",
           "tv_scene": "TV scene",
-          "schlaf_scene": "Sleep scene"
+          "schlaf_scene": "Sleep scene",
+          "learning": "Learn off delay",
+          "path_sensors": "Night path: bed sensors"
         },
         "data_description": {
           "adaptive": "Between day and evening, brightness and color temperature follow the sun elevation.",
@@ -74,7 +76,9 @@
           "override_timeout": "0 = only after the room was empty.",
           "house_mode_entity": "Away keeps lights off, vacation runs an evening presence simulation.",
           "away_states": "Comma separated, case insensitive.",
-          "vacation_states": "Comma separated, case insensitive."
+          "vacation_states": "Comma separated, case insensitive.",
+          "learning": "If lights are needed again shortly after auto-off, the delay grows; it shrinks slowly after correct offs.",
+          "path_sensors": "At night, when one turns off (got up), the night lights of this room turn on. Back on = off."
         }
       }
     },
@@ -150,7 +154,9 @@
           "abend_scene": "Evening scene",
           "nacht_scene": "Night scene",
           "tv_scene": "TV scene",
-          "schlaf_scene": "Sleep scene"
+          "schlaf_scene": "Sleep scene",
+          "learning": "Learn off delay",
+          "path_sensors": "Night path: bed sensors"
         },
         "data_description": {
           "adaptive": "Between day and evening, brightness and color temperature follow the sun elevation.",
@@ -160,7 +166,9 @@
           "override_timeout": "0 = only after the room was empty.",
           "house_mode_entity": "Away keeps lights off, vacation runs an evening presence simulation.",
           "away_states": "Comma separated, case insensitive.",
-          "vacation_states": "Comma separated, case insensitive."
+          "vacation_states": "Comma separated, case insensitive.",
+          "learning": "If lights are needed again shortly after auto-off, the delay grows; it shrinks slowly after correct offs.",
+          "path_sensors": "At night, when one turns off (got up), the night lights of this room turn on. Back on = off."
         }
       }
     },
@@ -225,6 +233,12 @@
           },
           "laenger_anwesend": {
             "name": "Extended presence"
+          },
+          "gelernter_zuschlag_s": {
+            "name": "Learned extra (s)"
+          },
+          "nachtpfad_aktiv": {
+            "name": "Night path active"
           }
         }
       }
@@ -240,6 +254,46 @@
     "button": {
       "zuruecksetzen": {
         "name": "Reset automation"
+      }
+    }
+  },
+  "services": {
+    "set_sleep_mode": {
+      "name": "Set sleep mode",
+      "description": "Turn sleep mode on or off for all or selected rooms.",
+      "fields": {
+        "sleep": {
+          "name": "Sleep",
+          "description": "On or off."
+        },
+        "rooms": {
+          "name": "Rooms",
+          "description": "Room names. Empty = all rooms."
+        }
+      }
+    },
+    "reset": {
+      "name": "Reset automation",
+      "description": "End manual mode in all or selected rooms.",
+      "fields": {
+        "rooms": {
+          "name": "Rooms",
+          "description": "Room names. Empty = all rooms."
+        }
+      }
+    },
+    "set_enabled": {
+      "name": "Automation on/off",
+      "description": "Turn automation on or off for all or selected rooms.",
+      "fields": {
+        "enabled": {
+          "name": "Automation",
+          "description": "On or off."
+        },
+        "rooms": {
+          "name": "Rooms",
+          "description": "Room names. Empty = all rooms."
+        }
       }
     }
   }
