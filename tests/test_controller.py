@@ -783,3 +783,66 @@ async def test_nobody_home(hass: HomeAssistant, freezer):
     hass.states.async_set("zone.home", "1")
     await hass.async_block_till_done()
     assert len(turn_on) == 1
+
+
+async def test_dark_sensor_and_lux_both_needed(hass: HomeAssistant, freezer):
+    """Mit Dunkel- und Lux-Sensor: nur an, wenn draußen UND im Raum dunkel."""
+    freezer.move_to(dt_util.now().replace(hour=15, minute=0, second=0))
+    hass.states.async_set("sun.sun", "above_horizon")
+    hass.states.async_set(PRESENCE, "on")
+    hass.states.async_set(DARK, "off")
+    hass.states.async_set(LUX, "25")  # trüber Tag, Raum unter Schwelle
+    hass.states.async_set(LIGHT, "off", {"supported_color_modes": ["color_temp"]})
+    turn_on = async_mock_service(hass, "light", "turn_on")
+    async_mock_service(hass, "light", "turn_off")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Wohnzimmer",
+        data={},
+        options={
+            CONF_LIGHTS: [LIGHT],
+            CONF_PRESENCE_SENSORS: [PRESENCE],
+            CONF_DARK_SENSOR: DARK,
+            "lux_sensor": LUX,
+            "lux_threshold": 30,
+        },
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert len(turn_on) == 0
+
+    # Automatik aus und wieder an -> bleibt aus, draußen ist es hell
+    switch = "switch.lichtsteuerung_wohnzimmer_automatik"
+    await hass.services.async_call("switch", "turn_off", {"entity_id": switch}, blocking=True)
+    await hass.services.async_call("switch", "turn_on", {"entity_id": switch}, blocking=True)
+    await hass.async_block_till_done()
+    assert len(turn_on) == 0
+
+    # Abends: draußen dunkel, Raum dunkel -> an
+    hass.states.async_set(DARK, "on")
+    await hass.async_block_till_done()
+    assert len(turn_on) == 1
+
+
+async def test_small_fluctuation_is_not_manual(hass, setup, freezer):
+    """Lampen, die schwankende Werte nachmelden, gelten nicht als bedient."""
+    turn_on, _ = setup
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    _own(hass, turn_on[0], "on", {**LIGHT_ATTRS, "color_temp_kelvin": 2700})
+    await hass.async_block_till_done()
+
+    freezer.tick(timedelta(seconds=30))
+    hass.states.async_set(
+        LIGHT, "on", {**LIGHT_ATTRS, "brightness": 182, "color_temp_kelvin": 2702}
+    )
+    await hass.async_block_till_done()
+    assert hass.states.get(STATUS).state != "manuell"
+
+    # Deutliche Änderung bleibt manuelle Bedienung
+    hass.states.async_set(
+        LIGHT, "on", {**LIGHT_ATTRS, "brightness": 60, "color_temp_kelvin": 2702}
+    )
+    await hass.async_block_till_done()
+    assert hass.states.get(STATUS).state == "manuell"

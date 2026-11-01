@@ -66,7 +66,7 @@
         },
         "data_description": {
           "dark_sensor": "When this sensor is on, it counts as dark.",
-          "lux_sensor": "Below the threshold the room counts as dark. Without darkness and lux sensor, the sun is used."
+          "lux_sensor": "Below the threshold the room counts as dark. Without darkness and lux sensor, the sun is used. With a darkness sensor as well: dark only if it is dark outside AND the room is below the lux threshold."
         }
       },
       "zeiten": {

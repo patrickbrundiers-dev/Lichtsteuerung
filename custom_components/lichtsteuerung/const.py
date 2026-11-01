@@ -120,7 +120,10 @@ DEFAULT_PHASE_SETTINGS: Final = {
 
 # Wie lange nach einem eigenen Befehl Zustandsmeldungen eines Lichts
 # noch als "eigene" gelten (Geräte melden oft verzögert oder mehrfach).
-OWN_CHANGE_GRACE_SECONDS: Final = 5
+OWN_CHANGE_GRACE_SECONDS: Final = 10
+# Schwankungen, die nicht als Bedienung zählen (Helligkeit 0-255, Kelvin)
+BRIGHTNESS_TOLERANCE: Final = 5
+KELVIN_TOLERANCE: Final = 60
 # Helligkeit beim Dimmen vor dem Ausschalten (Anteil der aktuellen Helligkeit)
 DIM_FACTOR: Final = 0.3
 

@@ -66,7 +66,7 @@
         },
         "data_description": {
           "dark_sensor": "Ist dieser Sensor an, gilt es als dunkel, z. B. Helper - Dunkel.",
-          "lux_sensor": "Unter der Lux-Schwelle gilt der Raum als dunkel. Ohne Dunkel- und Lux-Sensor zählt der Sonnenstand."
+          "lux_sensor": "Unter der Lux-Schwelle gilt der Raum als dunkel. Ohne Dunkel- und Lux-Sensor zählt der Sonnenstand. Mit Dunkel-Sensor zusätzlich: nur dunkel, wenn draußen dunkel UND der Raum unter der Lux-Schwelle ist."
         }
       },
       "zeiten": {
