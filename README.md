@@ -12,6 +12,22 @@ Manuelle Bedienung hat immer Vorrang.
 3. **Lichtsteuerung** in HACS herunterladen und Home Assistant neu starten.
 4. **Einstellungen → Geräte & Dienste → Integration hinzufügen → Lichtsteuerung**. Pro Raum einen Eintrag anlegen.
 
+## Einstellungen
+
+**Raum anlegen** fragt nur das Nötigste ab: Name, Lichter, Nachtlichter, Melder und Dunkel-Sensor. Alles andere startet mit sinnvollen Standardwerten.
+
+**Konfigurieren** öffnet ein Menü mit Bereichen. Jeder Bereich ist ein kurzes Formular, übernommen wird alles mit **Speichern und schließen**:
+
+| Bereich | Inhalt |
+| --- | --- |
+| 💡 Lichter und Melder | Lichter, Nachtlichter, Präsenzmelder |
+| 🌙 Wann ist es dunkel? | Dunkel-Sensor, Lux-Sensor, Lux-Schwelle |
+| ⏱️ Ausschalten und Zeiten | Ausschalt- und Dimmzeit, Lernen, längere Anwesenheit, manueller Modus, Nachtfenster |
+| 🎨 Helligkeit, Farbe und Szenen | Fließendes Licht, Übergang, pro Modus aufklappbar: Helligkeit, Farbtemperatur, Szene |
+| 📺 Fernsehen und Schlafen | Fernseher, Schlafmodus-Entität, Schlafenszeit, Runterdimmen, später ins Bett |
+| 🚪 Weitere Auslöser | Vorab-Auslöser, Nachtpfad, Willkommenslicht, „nicht ausschalten, solange …“ |
+| 🏠 Hausmodus | Hausmodus-Entität, Werte für abwesend und Urlaub |
+
 ## So funktioniert ein Raum
 
 | Situation | Verhalten |
@@ -33,7 +49,7 @@ Manuelle Bedienung hat immer Vorrang.
 
 **Lichtrollen:** Unter „Nachtlichter“ wählst du die Lichter, die nachts und im Schlafmodus leuchten. Die übrigen werden dann ausgeschaltet. Ohne Auswahl leuchten alle.
 
-**Zusatzfunktionen** (dritter Schritt der Einrichtung, alles optional):
+**Zusatzfunktionen** (alles optional, über **Konfigurieren**):
 
 | Funktion | Was sie macht |
 | --- | --- |

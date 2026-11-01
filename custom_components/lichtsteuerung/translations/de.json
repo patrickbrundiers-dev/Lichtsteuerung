@@ -3,90 +3,18 @@
     "step": {
       "user": {
         "title": "Raum anlegen",
-        "description": "Ein Eintrag steuert die Lichter eines Raums.",
+        "description": "Nur das Nötigste. Alles Weitere (Zeiten, Farben, TV, Schlafen …) stellst du danach über „Konfigurieren“ ein.",
         "data": {
           "name": "Raumname",
           "lights": "Lichter",
-          "presence_sensors": "Präsenz- oder Bewegungsmelder",
-          "dark_sensor": "Dunkel-Sensor (optional)",
-          "lux_sensor": "Lux-Sensor im Raum (optional)",
-          "lux_threshold": "Lux-Schwelle",
-          "off_delay": "Ausschaltverzögerung",
-          "dim_before_off": "Gedimmt vor dem Ausschalten",
-          "night_start": "Nacht beginnt",
-          "night_end": "Nacht endet",
           "night_lights": "Nachtlichter (optional)",
-          "media_entity": "Fernseher (optional)",
-          "sleep_entity": "Schlafmodus-Entität (optional)"
+          "presence_sensors": "Präsenz- oder Bewegungsmelder",
+          "dark_sensor": "Dunkel-Sensor (optional)"
         },
         "data_description": {
-          "presence_sensors": "Licht geht an, sobald einer davon an ist.",
-          "dark_sensor": "Ist dieser Sensor an, gilt es als dunkel, z. B. Helper - Dunkel.",
-          "lux_sensor": "Unter der Lux-Schwelle gilt der Raum als dunkel. Ohne Dunkel- und Lux-Sensor zählt der Sonnenstand.",
-          "off_delay": "So lange muss der Raum leer sein, bevor das Licht ausgeht.",
-          "dim_before_off": "So lange leuchtet das Licht gedimmt als Warnung, bevor es ausgeht. 0 = sofort aus.",
           "night_lights": "Nur diese Lichter leuchten nachts und im Schlafmodus. Leer = alle.",
-          "media_entity": "Läuft er, gilt der Raum als belegt und das Licht geht in den TV-Modus. z. B. input_boolean.fernseher_an",
-          "sleep_entity": "Ist sie an, gilt der Schlafmodus zusätzlich zum Schalter des Raums."
-        }
-      },
-      "light": {
-        "title": "Licht pro Tagesphase",
-        "description": "Nacht gilt im Nachtfenster, Abend nach Sonnenuntergang, sonst Tag. TV gilt, solange der Fernseher läuft, Schlaf hat Vorrang vor allem.",
-        "data": {
-          "tag_brightness": "Tag: Helligkeit",
-          "tag_kelvin": "Tag: Farbtemperatur",
-          "abend_brightness": "Abend: Helligkeit",
-          "abend_kelvin": "Abend: Farbtemperatur",
-          "nacht_brightness": "Nacht: Helligkeit",
-          "nacht_kelvin": "Nacht: Farbtemperatur",
-          "transition": "Übergangszeit",
-          "tv_brightness": "TV: Helligkeit",
-          "tv_kelvin": "TV: Farbtemperatur",
-          "schlaf_brightness": "Schlaf: Helligkeit",
-          "schlaf_kelvin": "Schlaf: Farbtemperatur"
-        }
-      },
-      "extras": {
-        "title": "Zusatzfunktionen",
-        "description": "Alles optional. Szenen ersetzen für ihre Phase die Werte für Helligkeit und Farbtemperatur.",
-        "data": {
-          "adaptive": "Fließendes Licht nach Sonnenstand",
-          "trigger_sensors": "Vorab-Auslöser (z. B. Türkontakt)",
-          "blocker_entities": "Nicht ausschalten, solange an",
-          "extended_after": "Länger anwesend ab",
-          "extended_off_delay": "Ausschaltverzögerung bei längerer Anwesenheit",
-          "override_timeout": "Manuellen Modus spätestens beenden nach",
-          "house_mode_entity": "Hausmodus",
-          "away_states": "Werte für abwesend",
-          "vacation_states": "Werte für Urlaub",
-          "tag_scene": "Tag: Szene",
-          "abend_scene": "Abend: Szene",
-          "nacht_scene": "Nacht: Szene",
-          "tv_scene": "TV: Szene",
-          "schlaf_scene": "Schlaf: Szene",
-          "learning": "Ausschaltzeit selbst lernen",
-          "path_sensors": "Nachtpfad: Bettsensoren",
-          "welcome_persons": "Willkommenslicht für",
-          "bedtime": "Schlafenszeit (optional)",
-          "winddown": "Runterdimmen über",
-          "late_entity": "Später ins Bett, wenn an"
-        },
-        "data_description": {
-          "adaptive": "Zwischen Tag und Abend gleiten Helligkeit und Farbtemperatur mit der Sonnenhöhe, statt bei Sonnenuntergang zu springen.",
-          "trigger_sensors": "Schalten das Licht schon beim Öffnen ein, zählen aber nicht als Anwesenheit.",
-          "blocker_entities": "z. B. Spielkonsole, Lautsprecher oder ein Gäste-Schalter.",
-          "extended_after": "0 = aus. Wer so lange im Raum war, bekommt die längere Ausschaltverzögerung.",
-          "override_timeout": "0 = erst, wenn der Raum leer war.",
-          "house_mode_entity": "z. B. input_select.hausmodus. Bei abwesend bleibt alles aus, bei Urlaub läuft eine Anwesenheitssimulation am Abend.",
-          "away_states": "Kommagetrennt, Groß/Klein egal.",
-          "vacation_states": "Kommagetrennt, Groß/Klein egal.",
-          "learning": "Wird das Licht kurz nach dem automatischen Aus wieder gebraucht, verlängert sich die Verzögerung. Nach richtigen Abschaltungen sinkt sie langsam wieder.",
-          "path_sensors": "Nachts: Wird einer davon frei (aufgestanden), gehen die Nachtlichter dieses Raums an. Wieder belegt = aus.",
-          "welcome_persons": "Kommt eine dieser Personen im Dunkeln nach Hause, geht das Licht an (mindestens 5 Minuten).",
-          "bedtime": "Vorher wird langsam auf Schlaflicht gedimmt, zur Schlafenszeit geht der Schlafmodus an. Am Nachtende geht er wieder aus.",
-          "winddown": "Minuten vor der Schlafenszeit.",
-          "late_entity": "z. B. binary_sensor.schulfrei: dann ist die Schlafenszeit 60 Minuten später."
+          "presence_sensors": "Licht geht an, sobald einer davon an ist.",
+          "dark_sensor": "Ist dieser Sensor an, gilt es als dunkel, z. B. Helper - Dunkel."
         }
       }
     },
@@ -102,89 +30,170 @@
   "options": {
     "step": {
       "init": {
-        "title": "Raum ändern",
+        "title": "Einstellungen: {room}",
+        "description": "Bereich wählen. Änderungen werden erst mit „Speichern“ übernommen.",
+        "menu_options": {
+          "basis": "💡 Lichter und Melder",
+          "dunkelheit": "🌙 Wann ist es dunkel?",
+          "zeiten": "⏱️ Ausschalten und Zeiten",
+          "licht": "🎨 Helligkeit, Farbe und Szenen",
+          "modi": "📺 Fernsehen und Schlafen",
+          "ausloeser": "🚪 Weitere Auslöser",
+          "haus": "🏠 Hausmodus",
+          "speichern": "✅ Speichern und schließen"
+        }
+      },
+      "basis": {
+        "title": "Lichter und Melder",
+        "description": "Welche Lichter gehören zum Raum, und wer meldet Anwesenheit?",
         "data": {
           "lights": "Lichter",
-          "presence_sensors": "Präsenz- oder Bewegungsmelder",
-          "dark_sensor": "Dunkel-Sensor (optional)",
-          "lux_sensor": "Lux-Sensor im Raum (optional)",
-          "lux_threshold": "Lux-Schwelle",
-          "off_delay": "Ausschaltverzögerung",
-          "dim_before_off": "Gedimmt vor dem Ausschalten",
-          "night_start": "Nacht beginnt",
-          "night_end": "Nacht endet",
-          "night_lights": "Nachtlichter (optional)",
-          "media_entity": "Fernseher (optional)",
-          "sleep_entity": "Schlafmodus-Entität (optional)"
+          "night_lights": "Nachtlichter",
+          "presence_sensors": "Präsenz- oder Bewegungsmelder"
         },
         "data_description": {
-          "presence_sensors": "Licht geht an, sobald einer davon an ist.",
-          "dark_sensor": "Ist dieser Sensor an, gilt es als dunkel, z. B. Helper - Dunkel.",
-          "lux_sensor": "Unter der Lux-Schwelle gilt der Raum als dunkel. Ohne Dunkel- und Lux-Sensor zählt der Sonnenstand.",
-          "off_delay": "So lange muss der Raum leer sein, bevor das Licht ausgeht.",
-          "dim_before_off": "So lange leuchtet das Licht gedimmt als Warnung, bevor es ausgeht. 0 = sofort aus.",
           "night_lights": "Nur diese Lichter leuchten nachts und im Schlafmodus. Leer = alle.",
-          "media_entity": "Läuft er, gilt der Raum als belegt und das Licht geht in den TV-Modus. z. B. input_boolean.fernseher_an",
-          "sleep_entity": "Ist sie an, gilt der Schlafmodus zusätzlich zum Schalter des Raums."
+          "presence_sensors": "Licht geht an, sobald einer davon an ist."
         }
       },
-      "light": {
-        "title": "Licht pro Tagesphase",
-        "description": "Nacht gilt im Nachtfenster, Abend nach Sonnenuntergang, sonst Tag. TV gilt, solange der Fernseher läuft, Schlaf hat Vorrang vor allem.",
+      "dunkelheit": {
+        "title": "Wann ist es dunkel?",
+        "description": "Ohne Dunkel- und Lux-Sensor zählt der Sonnenstand.",
         "data": {
-          "tag_brightness": "Tag: Helligkeit",
-          "tag_kelvin": "Tag: Farbtemperatur",
-          "abend_brightness": "Abend: Helligkeit",
-          "abend_kelvin": "Abend: Farbtemperatur",
-          "nacht_brightness": "Nacht: Helligkeit",
-          "nacht_kelvin": "Nacht: Farbtemperatur",
-          "transition": "Übergangszeit",
-          "tv_brightness": "TV: Helligkeit",
-          "tv_kelvin": "TV: Farbtemperatur",
-          "schlaf_brightness": "Schlaf: Helligkeit",
-          "schlaf_kelvin": "Schlaf: Farbtemperatur"
+          "dark_sensor": "Dunkel-Sensor",
+          "lux_sensor": "Lux-Sensor im Raum",
+          "lux_threshold": "Lux-Schwelle"
+        },
+        "data_description": {
+          "dark_sensor": "Ist dieser Sensor an, gilt es als dunkel, z. B. Helper - Dunkel.",
+          "lux_sensor": "Unter der Lux-Schwelle gilt der Raum als dunkel. Ohne Dunkel- und Lux-Sensor zählt der Sonnenstand."
         }
       },
-      "extras": {
-        "title": "Zusatzfunktionen",
-        "description": "Alles optional. Szenen ersetzen für ihre Phase die Werte für Helligkeit und Farbtemperatur.",
+      "zeiten": {
+        "title": "Ausschalten und Zeiten",
+        "description": "Wann das Licht ausgeht und wann die Nacht beginnt.",
         "data": {
-          "adaptive": "Fließendes Licht nach Sonnenstand",
-          "trigger_sensors": "Vorab-Auslöser (z. B. Türkontakt)",
-          "blocker_entities": "Nicht ausschalten, solange an",
+          "off_delay": "Ausschaltverzögerung",
+          "dim_before_off": "Gedimmt vor dem Ausschalten",
+          "learning": "Ausschaltzeit selbst lernen",
           "extended_after": "Länger anwesend ab",
           "extended_off_delay": "Ausschaltverzögerung bei längerer Anwesenheit",
           "override_timeout": "Manuellen Modus spätestens beenden nach",
-          "house_mode_entity": "Hausmodus",
-          "away_states": "Werte für abwesend",
-          "vacation_states": "Werte für Urlaub",
-          "tag_scene": "Tag: Szene",
-          "abend_scene": "Abend: Szene",
-          "nacht_scene": "Nacht: Szene",
-          "tv_scene": "TV: Szene",
-          "schlaf_scene": "Schlaf: Szene",
-          "learning": "Ausschaltzeit selbst lernen",
-          "path_sensors": "Nachtpfad: Bettsensoren",
-          "welcome_persons": "Willkommenslicht für",
-          "bedtime": "Schlafenszeit (optional)",
+          "night_start": "Nacht beginnt",
+          "night_end": "Nacht endet"
+        },
+        "data_description": {
+          "off_delay": "So lange muss der Raum leer sein, bevor das Licht ausgeht.",
+          "dim_before_off": "So lange leuchtet das Licht gedimmt als Warnung, bevor es ausgeht. 0 = sofort aus.",
+          "learning": "Wird das Licht kurz nach dem automatischen Aus wieder gebraucht, verlängert sich die Verzögerung. Nach richtigen Abschaltungen sinkt sie langsam wieder.",
+          "extended_after": "0 = aus. Wer so lange im Raum war, bekommt die längere Ausschaltverzögerung.",
+          "override_timeout": "0 = erst, wenn der Raum leer war."
+        }
+      },
+      "licht": {
+        "title": "Helligkeit, Farbe und Szenen",
+        "description": "Pro Modus aufklappen. Eine Szene ersetzt die Werte für Helligkeit und Farbe. Reihenfolge: Schlaf vor TV vor Nacht vor Abend vor Tag.",
+        "data": {
+          "adaptive": "Fließendes Licht nach Sonnenstand",
+          "transition": "Übergangszeit",
+          "tag": "☀️ Tag",
+          "abend": "🌇 Abend",
+          "nacht": "🌙 Nacht",
+          "tv": "📺 TV",
+          "schlaf": "😴 Schlaf"
+        },
+        "data_description": {
+          "adaptive": "Zwischen Tag und Abend gleiten Helligkeit und Farbtemperatur mit der Sonnenhöhe, statt bei Sonnenuntergang zu springen."
+        },
+        "sections": {
+          "tag": {
+            "name": "☀️ Tag",
+            "data": {
+              "tag_brightness": "Helligkeit",
+              "tag_kelvin": "Farbtemperatur",
+              "tag_scene": "Szene statt Werten (optional)"
+            }
+          },
+          "abend": {
+            "name": "🌇 Abend",
+            "data": {
+              "abend_brightness": "Helligkeit",
+              "abend_kelvin": "Farbtemperatur",
+              "abend_scene": "Szene statt Werten (optional)"
+            }
+          },
+          "nacht": {
+            "name": "🌙 Nacht",
+            "data": {
+              "nacht_brightness": "Helligkeit",
+              "nacht_kelvin": "Farbtemperatur",
+              "nacht_scene": "Szene statt Werten (optional)"
+            }
+          },
+          "tv": {
+            "name": "📺 TV",
+            "data": {
+              "tv_brightness": "Helligkeit",
+              "tv_kelvin": "Farbtemperatur",
+              "tv_scene": "Szene statt Werten (optional)"
+            }
+          },
+          "schlaf": {
+            "name": "😴 Schlaf",
+            "data": {
+              "schlaf_brightness": "Helligkeit",
+              "schlaf_kelvin": "Farbtemperatur",
+              "schlaf_scene": "Szene statt Werten (optional)"
+            }
+          }
+        }
+      },
+      "modi": {
+        "title": "Fernsehen und Schlafen",
+        "description": "Alles optional.",
+        "data": {
+          "media_entity": "Fernseher",
+          "sleep_entity": "Schlafmodus-Entität",
+          "bedtime": "Schlafenszeit",
           "winddown": "Runterdimmen über",
           "late_entity": "Später ins Bett, wenn an"
         },
         "data_description": {
-          "adaptive": "Zwischen Tag und Abend gleiten Helligkeit und Farbtemperatur mit der Sonnenhöhe, statt bei Sonnenuntergang zu springen.",
-          "trigger_sensors": "Schalten das Licht schon beim Öffnen ein, zählen aber nicht als Anwesenheit.",
-          "blocker_entities": "z. B. Spielkonsole, Lautsprecher oder ein Gäste-Schalter.",
-          "extended_after": "0 = aus. Wer so lange im Raum war, bekommt die längere Ausschaltverzögerung.",
-          "override_timeout": "0 = erst, wenn der Raum leer war.",
-          "house_mode_entity": "z. B. input_select.hausmodus. Bei abwesend bleibt alles aus, bei Urlaub läuft eine Anwesenheitssimulation am Abend.",
-          "away_states": "Kommagetrennt, Groß/Klein egal.",
-          "vacation_states": "Kommagetrennt, Groß/Klein egal.",
-          "learning": "Wird das Licht kurz nach dem automatischen Aus wieder gebraucht, verlängert sich die Verzögerung. Nach richtigen Abschaltungen sinkt sie langsam wieder.",
-          "path_sensors": "Nachts: Wird einer davon frei (aufgestanden), gehen die Nachtlichter dieses Raums an. Wieder belegt = aus.",
-          "welcome_persons": "Kommt eine dieser Personen im Dunkeln nach Hause, geht das Licht an (mindestens 5 Minuten).",
+          "media_entity": "Läuft er, gilt der Raum als belegt und das Licht geht in den TV-Modus. z. B. input_boolean.fernseher_an",
+          "sleep_entity": "Ist sie an, gilt der Schlafmodus zusätzlich zum Schalter des Raums.",
           "bedtime": "Vorher wird langsam auf Schlaflicht gedimmt, zur Schlafenszeit geht der Schlafmodus an. Am Nachtende geht er wieder aus.",
           "winddown": "Minuten vor der Schlafenszeit.",
           "late_entity": "z. B. binary_sensor.schulfrei: dann ist die Schlafenszeit 60 Minuten später."
+        }
+      },
+      "ausloeser": {
+        "title": "Weitere Auslöser",
+        "description": "Alles optional.",
+        "data": {
+          "trigger_sensors": "Vorab-Auslöser (z. B. Türkontakt)",
+          "path_sensors": "Nachtpfad: Bettsensoren",
+          "welcome_persons": "Willkommenslicht für",
+          "blocker_entities": "Nicht ausschalten, solange an"
+        },
+        "data_description": {
+          "trigger_sensors": "Schalten das Licht schon beim Öffnen ein, zählen aber nicht als Anwesenheit.",
+          "path_sensors": "Nachts: Wird einer davon frei (aufgestanden), gehen die Nachtlichter dieses Raums an. Wieder belegt = aus.",
+          "welcome_persons": "Kommt eine dieser Personen im Dunkeln nach Hause, geht das Licht an (mindestens 5 Minuten).",
+          "blocker_entities": "z. B. Spielkonsole, Lautsprecher oder ein Gäste-Schalter."
+        }
+      },
+      "haus": {
+        "title": "Hausmodus",
+        "description": "Optional. Bei abwesend bleibt alles aus, bei Urlaub läuft abends eine Anwesenheitssimulation.",
+        "data": {
+          "house_mode_entity": "Hausmodus",
+          "away_states": "Werte für abwesend",
+          "vacation_states": "Werte für Urlaub"
+        },
+        "data_description": {
+          "house_mode_entity": "z. B. input_select.hausmodus. Bei abwesend bleibt alles aus, bei Urlaub läuft eine Anwesenheitssimulation am Abend.",
+          "away_states": "Kommagetrennt, Groß/Klein egal.",
+          "vacation_states": "Kommagetrennt, Groß/Klein egal."
         }
       }
     },

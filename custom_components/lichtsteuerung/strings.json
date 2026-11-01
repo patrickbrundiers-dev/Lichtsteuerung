@@ -3,90 +3,18 @@
     "step": {
       "user": {
         "title": "Add room",
-        "description": "One entry controls the lights of one room.",
+        "description": "Only the essentials. Everything else (times, colors, TV, sleep …) can be set afterwards via “Configure”.",
         "data": {
           "name": "Room name",
           "lights": "Lights",
-          "presence_sensors": "Presence or motion sensors",
-          "dark_sensor": "Darkness sensor (optional)",
-          "lux_sensor": "Room illuminance sensor (optional)",
-          "lux_threshold": "Illuminance threshold",
-          "off_delay": "Off delay",
-          "dim_before_off": "Dim before off",
-          "night_start": "Night starts",
-          "night_end": "Night ends",
           "night_lights": "Night lights (optional)",
-          "media_entity": "TV (optional)",
-          "sleep_entity": "Sleep entity (optional)"
+          "presence_sensors": "Presence or motion sensors",
+          "dark_sensor": "Darkness sensor (optional)"
         },
         "data_description": {
-          "presence_sensors": "Lights turn on when any of these is on.",
-          "dark_sensor": "When this sensor is on, it counts as dark.",
-          "lux_sensor": "Below the threshold the room counts as dark. Without darkness and lux sensor, the sun is used.",
-          "off_delay": "How long the room must be empty before lights turn off.",
-          "dim_before_off": "Lights stay dimmed this long as a warning. 0 = off immediately.",
           "night_lights": "Only these lights are used at night and in sleep mode. Empty = all.",
-          "media_entity": "While it is on, the room counts as occupied and uses TV mode.",
-          "sleep_entity": "When on, sleep mode applies in addition to the room switch."
-        }
-      },
-      "light": {
-        "title": "Light per time of day",
-        "description": "Night applies within the night window, evening after sunset, day otherwise. TV applies while the TV is on; sleep overrides everything.",
-        "data": {
-          "tag_brightness": "Day: brightness",
-          "tag_kelvin": "Day: color temperature",
-          "abend_brightness": "Evening: brightness",
-          "abend_kelvin": "Evening: color temperature",
-          "nacht_brightness": "Night: brightness",
-          "nacht_kelvin": "Night: color temperature",
-          "transition": "Transition",
-          "tv_brightness": "TV: brightness",
-          "tv_kelvin": "TV: color temperature",
-          "schlaf_brightness": "Sleep: brightness",
-          "schlaf_kelvin": "Sleep: color temperature"
-        }
-      },
-      "extras": {
-        "title": "Extras",
-        "description": "All optional. Scenes replace brightness and color temperature for their phase.",
-        "data": {
-          "adaptive": "Adaptive light by sun elevation",
-          "trigger_sensors": "Early triggers (e.g. door contact)",
-          "blocker_entities": "Keep on while any is on",
-          "extended_after": "Extended presence after",
-          "extended_off_delay": "Off delay after extended presence",
-          "override_timeout": "End manual mode at the latest after",
-          "house_mode_entity": "House mode",
-          "away_states": "Away values",
-          "vacation_states": "Vacation values",
-          "tag_scene": "Day scene",
-          "abend_scene": "Evening scene",
-          "nacht_scene": "Night scene",
-          "tv_scene": "TV scene",
-          "schlaf_scene": "Sleep scene",
-          "learning": "Learn off delay",
-          "path_sensors": "Night path: bed sensors",
-          "welcome_persons": "Welcome light for",
-          "bedtime": "Bedtime (optional)",
-          "winddown": "Wind down over",
-          "late_entity": "Later bedtime when on"
-        },
-        "data_description": {
-          "adaptive": "Between day and evening, brightness and color temperature follow the sun elevation.",
-          "trigger_sensors": "Turn lights on early but do not count as presence.",
-          "blocker_entities": "e.g. game console, speaker or a guest switch.",
-          "extended_after": "0 = off.",
-          "override_timeout": "0 = only after the room was empty.",
-          "house_mode_entity": "Away keeps lights off, vacation runs an evening presence simulation.",
-          "away_states": "Comma separated, case insensitive.",
-          "vacation_states": "Comma separated, case insensitive.",
-          "learning": "If lights are needed again shortly after auto-off, the delay grows; it shrinks slowly after correct offs.",
-          "path_sensors": "At night, when one turns off (got up), the night lights of this room turn on. Back on = off.",
-          "welcome_persons": "When one of these people arrives home in the dark, lights turn on (at least 5 minutes).",
-          "bedtime": "Lights dim slowly to sleep light before; at bedtime sleep mode turns on. It turns off at night end.",
-          "winddown": "Minutes before bedtime.",
-          "late_entity": "e.g. a no-school sensor: bedtime is 60 minutes later."
+          "presence_sensors": "Lights turn on when any of these is on.",
+          "dark_sensor": "When this sensor is on, it counts as dark."
         }
       }
     },
@@ -102,89 +30,170 @@
   "options": {
     "step": {
       "init": {
-        "title": "Edit room",
+        "title": "Settings: {room}",
+        "description": "Pick an area. Changes are applied with “Save”.",
+        "menu_options": {
+          "basis": "💡 Lights and sensors",
+          "dunkelheit": "🌙 When is it dark?",
+          "zeiten": "⏱️ Turning off and times",
+          "licht": "🎨 Brightness, color and scenes",
+          "modi": "📺 TV and sleep",
+          "ausloeser": "🚪 More triggers",
+          "haus": "🏠 House mode",
+          "speichern": "✅ Save and close"
+        }
+      },
+      "basis": {
+        "title": "Lights and sensors",
+        "description": "Which lights belong to the room, and what reports presence?",
         "data": {
           "lights": "Lights",
-          "presence_sensors": "Presence or motion sensors",
-          "dark_sensor": "Darkness sensor (optional)",
-          "lux_sensor": "Room illuminance sensor (optional)",
-          "lux_threshold": "Illuminance threshold",
-          "off_delay": "Off delay",
-          "dim_before_off": "Dim before off",
-          "night_start": "Night starts",
-          "night_end": "Night ends",
-          "night_lights": "Night lights (optional)",
-          "media_entity": "TV (optional)",
-          "sleep_entity": "Sleep entity (optional)"
+          "night_lights": "Night lights",
+          "presence_sensors": "Presence or motion sensors"
         },
         "data_description": {
-          "presence_sensors": "Lights turn on when any of these is on.",
-          "dark_sensor": "When this sensor is on, it counts as dark.",
-          "lux_sensor": "Below the threshold the room counts as dark. Without darkness and lux sensor, the sun is used.",
-          "off_delay": "How long the room must be empty before lights turn off.",
-          "dim_before_off": "Lights stay dimmed this long as a warning. 0 = off immediately.",
           "night_lights": "Only these lights are used at night and in sleep mode. Empty = all.",
-          "media_entity": "While it is on, the room counts as occupied and uses TV mode.",
-          "sleep_entity": "When on, sleep mode applies in addition to the room switch."
+          "presence_sensors": "Lights turn on when any of these is on."
         }
       },
-      "light": {
-        "title": "Light per time of day",
-        "description": "Night applies within the night window, evening after sunset, day otherwise. TV applies while the TV is on; sleep overrides everything.",
+      "dunkelheit": {
+        "title": "When is it dark?",
+        "description": "Without darkness and lux sensor, the sun is used.",
         "data": {
-          "tag_brightness": "Day: brightness",
-          "tag_kelvin": "Day: color temperature",
-          "abend_brightness": "Evening: brightness",
-          "abend_kelvin": "Evening: color temperature",
-          "nacht_brightness": "Night: brightness",
-          "nacht_kelvin": "Night: color temperature",
-          "transition": "Transition",
-          "tv_brightness": "TV: brightness",
-          "tv_kelvin": "TV: color temperature",
-          "schlaf_brightness": "Sleep: brightness",
-          "schlaf_kelvin": "Sleep: color temperature"
+          "dark_sensor": "Darkness sensor",
+          "lux_sensor": "Room illuminance sensor",
+          "lux_threshold": "Illuminance threshold"
+        },
+        "data_description": {
+          "dark_sensor": "When this sensor is on, it counts as dark.",
+          "lux_sensor": "Below the threshold the room counts as dark. Without darkness and lux sensor, the sun is used."
         }
       },
-      "extras": {
-        "title": "Extras",
-        "description": "All optional. Scenes replace brightness and color temperature for their phase.",
+      "zeiten": {
+        "title": "Turning off and times",
+        "description": "When lights turn off and when night starts.",
         "data": {
-          "adaptive": "Adaptive light by sun elevation",
-          "trigger_sensors": "Early triggers (e.g. door contact)",
-          "blocker_entities": "Keep on while any is on",
+          "off_delay": "Off delay",
+          "dim_before_off": "Dim before off",
+          "learning": "Learn off delay",
           "extended_after": "Extended presence after",
           "extended_off_delay": "Off delay after extended presence",
           "override_timeout": "End manual mode at the latest after",
-          "house_mode_entity": "House mode",
-          "away_states": "Away values",
-          "vacation_states": "Vacation values",
-          "tag_scene": "Day scene",
-          "abend_scene": "Evening scene",
-          "nacht_scene": "Night scene",
-          "tv_scene": "TV scene",
-          "schlaf_scene": "Sleep scene",
-          "learning": "Learn off delay",
-          "path_sensors": "Night path: bed sensors",
-          "welcome_persons": "Welcome light for",
-          "bedtime": "Bedtime (optional)",
+          "night_start": "Night starts",
+          "night_end": "Night ends"
+        },
+        "data_description": {
+          "off_delay": "How long the room must be empty before lights turn off.",
+          "dim_before_off": "Lights stay dimmed this long as a warning. 0 = off immediately.",
+          "learning": "If lights are needed again shortly after auto-off, the delay grows; it shrinks slowly after correct offs.",
+          "extended_after": "0 = off.",
+          "override_timeout": "0 = only after the room was empty."
+        }
+      },
+      "licht": {
+        "title": "Brightness, color and scenes",
+        "description": "Expand each mode. A scene replaces brightness and color. Priority: sleep, TV, night, evening, day.",
+        "data": {
+          "adaptive": "Adaptive light by sun elevation",
+          "transition": "Transition",
+          "tag": "☀️ Day",
+          "abend": "🌇 Evening",
+          "nacht": "🌙 Night",
+          "tv": "📺 TV",
+          "schlaf": "😴 Sleep"
+        },
+        "data_description": {
+          "adaptive": "Between day and evening, brightness and color temperature follow the sun elevation."
+        },
+        "sections": {
+          "tag": {
+            "name": "☀️ Day",
+            "data": {
+              "tag_brightness": "Brightness",
+              "tag_kelvin": "Color temperature",
+              "tag_scene": "Scene instead (optional)"
+            }
+          },
+          "abend": {
+            "name": "🌇 Evening",
+            "data": {
+              "abend_brightness": "Brightness",
+              "abend_kelvin": "Color temperature",
+              "abend_scene": "Scene instead (optional)"
+            }
+          },
+          "nacht": {
+            "name": "🌙 Night",
+            "data": {
+              "nacht_brightness": "Brightness",
+              "nacht_kelvin": "Color temperature",
+              "nacht_scene": "Scene instead (optional)"
+            }
+          },
+          "tv": {
+            "name": "📺 TV",
+            "data": {
+              "tv_brightness": "Brightness",
+              "tv_kelvin": "Color temperature",
+              "tv_scene": "Scene instead (optional)"
+            }
+          },
+          "schlaf": {
+            "name": "😴 Sleep",
+            "data": {
+              "schlaf_brightness": "Brightness",
+              "schlaf_kelvin": "Color temperature",
+              "schlaf_scene": "Scene instead (optional)"
+            }
+          }
+        }
+      },
+      "modi": {
+        "title": "TV and sleep",
+        "description": "All optional.",
+        "data": {
+          "media_entity": "TV",
+          "sleep_entity": "Sleep entity",
+          "bedtime": "Bedtime",
           "winddown": "Wind down over",
           "late_entity": "Later bedtime when on"
         },
         "data_description": {
-          "adaptive": "Between day and evening, brightness and color temperature follow the sun elevation.",
-          "trigger_sensors": "Turn lights on early but do not count as presence.",
-          "blocker_entities": "e.g. game console, speaker or a guest switch.",
-          "extended_after": "0 = off.",
-          "override_timeout": "0 = only after the room was empty.",
-          "house_mode_entity": "Away keeps lights off, vacation runs an evening presence simulation.",
-          "away_states": "Comma separated, case insensitive.",
-          "vacation_states": "Comma separated, case insensitive.",
-          "learning": "If lights are needed again shortly after auto-off, the delay grows; it shrinks slowly after correct offs.",
-          "path_sensors": "At night, when one turns off (got up), the night lights of this room turn on. Back on = off.",
-          "welcome_persons": "When one of these people arrives home in the dark, lights turn on (at least 5 minutes).",
+          "media_entity": "While it is on, the room counts as occupied and uses TV mode.",
+          "sleep_entity": "When on, sleep mode applies in addition to the room switch.",
           "bedtime": "Lights dim slowly to sleep light before; at bedtime sleep mode turns on. It turns off at night end.",
           "winddown": "Minutes before bedtime.",
           "late_entity": "e.g. a no-school sensor: bedtime is 60 minutes later."
+        }
+      },
+      "ausloeser": {
+        "title": "More triggers",
+        "description": "All optional.",
+        "data": {
+          "trigger_sensors": "Early triggers (e.g. door contact)",
+          "path_sensors": "Night path: bed sensors",
+          "welcome_persons": "Welcome light for",
+          "blocker_entities": "Keep on while any is on"
+        },
+        "data_description": {
+          "trigger_sensors": "Turn lights on early but do not count as presence.",
+          "path_sensors": "At night, when one turns off (got up), the night lights of this room turn on. Back on = off.",
+          "welcome_persons": "When one of these people arrives home in the dark, lights turn on (at least 5 minutes).",
+          "blocker_entities": "e.g. game console, speaker or a guest switch."
+        }
+      },
+      "haus": {
+        "title": "House mode",
+        "description": "Optional. Away keeps lights off, vacation runs an evening presence simulation.",
+        "data": {
+          "house_mode_entity": "House mode",
+          "away_states": "Away values",
+          "vacation_states": "Vacation values"
+        },
+        "data_description": {
+          "house_mode_entity": "Away keeps lights off, vacation runs an evening presence simulation.",
+          "away_states": "Comma separated, case insensitive.",
+          "vacation_states": "Comma separated, case insensitive."
         }
       }
     },
