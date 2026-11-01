@@ -18,7 +18,9 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
-          ignore: brands
+          # Privates Repo ohne Beschreibung/Topics: diese Store-Kriterien gelten nur
+          # für die Aufnahme in den HACS-Standardkatalog, nicht für eigene Repos.
+          ignore: brands description topics
 
   tests:
     runs-on: ubuntu-latest
