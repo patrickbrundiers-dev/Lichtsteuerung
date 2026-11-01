@@ -35,6 +35,10 @@ CONF_WELCOME_PERSONS: Final = "welcome_persons"
 CONF_BEDTIME: Final = "bedtime"
 CONF_WINDDOWN: Final = "winddown"
 CONF_LATE_ENTITY: Final = "late_entity"
+CONF_AWAY_WHEN_EMPTY: Final = "away_when_empty"
+HOME_ZONE: Final = "zone.home"
+# So lange muss zone.home auf 0 stehen, bevor niemand zu Hause gilt
+AWAY_EMPTY_MINUTES: Final = 5
 DEFAULT_WINDDOWN: Final = 20
 LATE_MINUTES: Final = 60
 WELCOME_MIN_SECONDS: Final = 300

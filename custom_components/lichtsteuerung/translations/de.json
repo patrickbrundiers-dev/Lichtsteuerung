@@ -39,7 +39,7 @@
           "licht": "🎨 Helligkeit, Farbe und Szenen",
           "modi": "📺 Fernsehen und Schlafen",
           "ausloeser": "🚪 Weitere Auslöser",
-          "haus": "🏠 Hausmodus",
+          "haus": "🏠 Abwesenheit und Hausmodus",
           "speichern": "✅ Speichern und schließen"
         }
       },
@@ -183,14 +183,16 @@
         }
       },
       "haus": {
-        "title": "Hausmodus",
-        "description": "Optional. Bei abwesend bleibt alles aus, bei Urlaub läuft abends eine Anwesenheitssimulation.",
+        "title": "Abwesenheit und Hausmodus",
+        "description": "Ist niemand zu Hause oder steht der Hausmodus auf abwesend, bleibt alles aus. Bei Urlaub läuft abends eine Anwesenheitssimulation.",
         "data": {
+          "away_when_empty": "Niemand zu Hause = abwesend",
           "house_mode_entity": "Hausmodus",
           "away_states": "Werte für abwesend",
           "vacation_states": "Werte für Urlaub"
         },
         "data_description": {
+          "away_when_empty": "Sind alle Personen 5 Minuten lang außer Haus (zone.home = 0), geht das Licht aus und bleibt aus. Kommt jemand heim, läuft alles wieder normal.",
           "house_mode_entity": "z. B. input_select.hausmodus. Bei abwesend bleibt alles aus, bei Urlaub läuft eine Anwesenheitssimulation am Abend.",
           "away_states": "Kommagetrennt, Groß/Klein egal.",
           "vacation_states": "Kommagetrennt, Groß/Klein egal."

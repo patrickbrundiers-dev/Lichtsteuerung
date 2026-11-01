@@ -79,6 +79,9 @@ from .const import (
     ADAPTIVE_INTERVAL_MINUTES,
     CONF_ADAPTIVE,
     CONF_AWAY_STATES,
+    CONF_AWAY_WHEN_EMPTY,
+    AWAY_EMPTY_MINUTES,
+    HOME_ZONE,
     CONF_BLOCKER_ENTITIES,
     CONF_EXTENDED_AFTER,
     CONF_EXTENDED_OFF_DELAY,
@@ -190,6 +193,8 @@ class RoomController:
         self._unsubs: list[Callable[[], None]] = []
         # Lux-Sensor im Raum: Wert ohne eigenes Licht und mit eigenem Licht
         self._lights_on = False
+        self._home_empty = False
+        self._home_empty_timer: CALLBACK_TYPE | None = None
         self._lux_ambient: float | None = None
         self._lux_lit: float | None = None
         self._lux_settle_until = 0.0
@@ -333,6 +338,22 @@ class RoomController:
                     self._handle_house_mode_event,
                 )
             )
+        if self.config.get(CONF_AWAY_WHEN_EMPTY):
+            zone = hass.states.get(HOME_ZONE)
+            if zone is not None and zone.state == "0":
+                empty_for = dt_util.utcnow() - zone.last_changed
+                remaining = AWAY_EMPTY_MINUTES * 60 - empty_for.total_seconds()
+                if remaining <= 0:
+                    self._home_empty = True
+                else:
+                    self._home_empty_timer = async_call_later(
+                        hass, remaining, self._handle_home_empty
+                    )
+            self._unsubs.append(
+                async_track_state_change_event(
+                    hass, [HOME_ZONE], self._handle_home_zone_event
+                )
+            )
         if self.config.get(CONF_ADAPTIVE):
             self._unsubs.append(
                 async_track_time_interval(
@@ -400,6 +421,7 @@ class RoomController:
         self._cancel_override_timer()
         self._cancel_learn_timer()
         self._cancel_winddown_timer()
+        self._cancel_home_empty_timer()
         self._stop_simulation()
         for issue_id in self._issues:
             ir.async_delete_issue(self.hass, DOMAIN, issue_id)
@@ -450,7 +472,9 @@ class RoomController:
         return state.state.strip().casefold() in wanted
 
     def away(self) -> bool:
-        """Hausmodus steht auf abwesend (ohne Simulation)."""
+        """Hausmodus steht auf abwesend oder niemand ist zu Hause."""
+        if self._home_empty and not self.vacation():
+            return True
         return self._house_mode_in(CONF_AWAY_STATES, DEFAULT_AWAY_STATES)
 
     def vacation(self) -> bool:
@@ -777,6 +801,42 @@ class RoomController:
 
     @callback
     def _handle_house_mode_event(self, event: Event[EventStateChangedData]) -> None:
+        self._apply_house_mode()
+
+    @callback
+    def _handle_home_zone_event(self, event: Event[EventStateChangedData]) -> None:
+        new: State | None = event.data["new_state"]
+        if new is None or new.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            return
+        if new.state == "0":
+            if self._home_empty or self._home_empty_timer is not None:
+                return
+            self._home_empty_timer = async_call_later(
+                self.hass, AWAY_EMPTY_MINUTES * 60, self._handle_home_empty
+            )
+            return
+        self._cancel_home_empty_timer()
+        if self._home_empty:
+            self._home_empty = False
+            self._log("jemand ist wieder zu Hause")
+            self._apply_house_mode()
+
+    @callback
+    def _handle_home_empty(self, _now: Any) -> None:
+        self._home_empty_timer = None
+        zone = self.hass.states.get(HOME_ZONE)
+        if zone is None or zone.state != "0":
+            return
+        self._home_empty = True
+        self._apply_house_mode()
+
+    def _cancel_home_empty_timer(self) -> None:
+        if self._home_empty_timer is not None:
+            self._home_empty_timer()
+            self._home_empty_timer = None
+
+    @callback
+    def _apply_house_mode(self) -> None:
         if not self._enabled:
             return
         self._stop_simulation()
