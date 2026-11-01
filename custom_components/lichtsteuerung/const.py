@@ -75,6 +75,12 @@ def conf_kelvin(phase: str) -> str:
 
 
 DEFAULT_LUX_THRESHOLD: Final = 30
+# Lux-Sensoren melden träge: so lange nach dem Aus/An gilt der Messwert
+# noch als vom eigenen Licht beeinflusst.
+LUX_SETTLE_SECONDS: Final = 120
+# Brennendes Licht geht aus, wenn es ohne den eigenen Lichtanteil
+# mindestens so viel heller ist als die Schwelle.
+LUX_BRIGHT_FACTOR: Final = 2.0
 DEFAULT_OFF_DELAY: Final = 120
 DEFAULT_DIM_BEFORE_OFF: Final = 20
 DEFAULT_NIGHT_START: Final = "22:30:00"

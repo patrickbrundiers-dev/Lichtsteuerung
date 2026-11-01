@@ -37,6 +37,8 @@ Manuelle Bedienung hat immer Vorrang.
 | Jemand kommt während des Dimmens zurück | Licht wird wieder normal hell |
 | Tagesphase wechselt bei brennendem Licht | Helligkeit und Farbtemperatur werden angepasst |
 | Dunkel-Sensor meldet „hell“ | Automatisch eingeschaltetes Licht geht aus (nur ohne Lux-Sensor im Raum) |
+| Lux-Sensor im Raum wird hell (Tageslicht) | Die Integration kennt den Anteil der eigenen Lampe (Messung vor und 2 Minuten nach dem Einschalten). Ist es ohne diesen Anteil mindestens doppelt so hell wie die Lux-Schwelle, geht das Licht aus |
+| Zurück kurz nach dem Aus | Träge Lux-Sensoren zeigen evtl. noch den Wert mit Lampe. Bis 2 Minuten nach dem Aus zählt deshalb der Wert von vor dem Einschalten |
 | Jemand schaltet oder dimmt selbst (Schalter, App, Alexa) | Raum wechselt auf **manuell**: keine automatischen Änderungen, bis der Raum leer war und die Ausschaltverzögerung abgelaufen ist |
 
 **Modi:** In dieser Reihenfolge gilt der erste passende Modus. Für jeden Modus sind Helligkeit und Farbtemperatur einstellbar.
