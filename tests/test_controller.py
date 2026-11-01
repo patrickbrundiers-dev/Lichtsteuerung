@@ -573,3 +573,84 @@ async def test_house_services(hass, setup):
     )
     await hass.async_block_till_done()
     assert hass.states.get(STATUS).state == "deaktiviert"
+
+
+async def test_welcome_light(hass, setup):
+    """Person kommt im Dunkeln heim: Licht an."""
+    turn_on, _ = setup
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    hass.states.async_set("person.patrick", "not_home", {"friendly_name": "Patrick"})
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, "welcome_persons": ["person.patrick"]}
+    )
+    await hass.async_block_till_done()
+    hass.states.async_set("person.patrick", "home", {"friendly_name": "Patrick"})
+    await hass.async_block_till_done()
+    assert len(turn_on) == 1
+    assert "Willkommen" in hass.states.get(STATUS).attributes["letzte_aktion"]
+
+
+async def test_bedtime_winddown(hass, setup, freezer):
+    """Vor der Schlafenszeit wird langsam gedimmt, dann Schlafmodus."""
+    turn_on, _ = setup
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, "bedtime": "19:30:00", "winddown": 20}
+    )
+    await hass.async_block_till_done()
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    _own(hass, turn_on[-1], "on")
+    count = len(turn_on)
+
+    freezer.move_to(dt_util.now().replace(hour=19, minute=10, second=0))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert len(turn_on) == count + 1
+    assert turn_on[-1].data["transition"] == 1200
+    assert turn_on[-1].data["brightness_pct"] == 2
+
+    freezer.tick(timedelta(minutes=21))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    status = hass.states.get(STATUS)
+    assert status.attributes["modus"] == "schlaf"
+    assert status.attributes["schlafenszeit_aktiv"] is True
+
+
+async def test_usage_and_flash(hass, setup, freezer):
+    """Leuchtdauer zählt mit, Blinken stellt den Zustand wieder her."""
+    turn_on, turn_off = setup
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    _own(hass, turn_on[0], "on")
+    await hass.async_block_till_done()
+    freezer.tick(timedelta(minutes=30))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    usage_id = next(
+        e.entity_id
+        for e in er.async_get(hass).entities.values()
+        if e.unique_id.endswith("_leuchtdauer_heute")
+    )
+    usage = hass.states.get(usage_id)
+    assert float(usage.state) == pytest.approx(0.5, abs=0.02)
+
+    await hass.services.async_call(DOMAIN, "flash", {"count": 1}, blocking=True)
+    await hass.async_block_till_done()
+    # einmal aus, einmal an, dann Wiederherstellung (an)
+    assert turn_off[-1].data["entity_id"] == [LIGHT]
+    assert turn_on[-1].data["brightness"] == 180
+
+
+async def test_health_issue(hass, setup, freezer):
+    """Hängender Präsenzmelder erzeugt eine Reparaturmeldung."""
+    from homeassistant.helpers import issue_registry as ir
+
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    freezer.tick(timedelta(hours=7))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    issues = [i for i in ir.async_get(hass).issues.values() if i.domain == DOMAIN]
+    assert [i.translation_key for i in issues] == ["presence_stuck"]

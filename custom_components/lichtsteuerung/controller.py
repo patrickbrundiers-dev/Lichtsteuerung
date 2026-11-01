@@ -9,9 +9,11 @@ nach der Ausschaltverzögerung aus ist.
 
 from __future__ import annotations
 
+import asyncio
 from collections import deque
 from collections.abc import Callable
 from datetime import datetime, time, timedelta
+from functools import partial
 import logging
 import random
 import time as monotonic_time
@@ -41,6 +43,7 @@ from homeassistant.core import (
     State,
     callback,
 )
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import (
     async_call_later,
@@ -52,6 +55,17 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    FLASH_STEP_SECONDS,
+    CONF_BEDTIME,
+    CONF_LATE_ENTITY,
+    CONF_WELCOME_PERSONS,
+    CONF_WINDDOWN,
+    DEFAULT_WINDDOWN,
+    HEALTH_INTERVAL_MINUTES,
+    LATE_MINUTES,
+    LIGHT_UNAVAILABLE_MINUTES,
+    PRESENCE_STUCK_HOURS,
+    WELCOME_MIN_SECONDS,
     CONF_LEARNING,
     CONF_PATH_SENSORS,
     DOMAIN,
@@ -162,6 +176,12 @@ class RoomController:
         self._last_auto_off: float | None = None
         self._learn_timer: CALLBACK_TYPE | None = None
         self._path_active = False
+        self._sleep_by_bedtime = False
+        self._winddown_timer: CALLBACK_TYPE | None = None
+        self._on_since: datetime | None = None
+        self._usage_day: str = dt_util.now().date().isoformat()
+        self._usage_seconds = 0.0
+        self._issues: set[str] = set()
         self._store: Store[dict[str, Any]] = Store(
             hass, 1, f"{DOMAIN}.{entry.entry_id}"
         )
@@ -229,6 +249,9 @@ class RoomController:
         data = await self._store.async_load()
         if data:
             self._learned_extra = float(data.get("learned_extra", 0.0))
+            if data.get("usage_day") == self._usage_day:
+                self._usage_seconds = float(data.get("usage_seconds", 0.0))
+
     @callback
     def async_start(self) -> None:
         """Auf Zustandsänderungen und Zeitpunkte hören."""
@@ -241,6 +264,44 @@ class RoomController:
                 self._handle_presence_event,
             )
         )
+        if self.config.get(CONF_WELCOME_PERSONS):
+            self._unsubs.append(
+                async_track_state_change_event(
+                    hass,
+                    list(self.config[CONF_WELCOME_PERSONS]),
+                    self._handle_welcome_event,
+                )
+            )
+        if self.config.get(CONF_BEDTIME):
+            bedtime = self._time(CONF_BEDTIME, "19:00:00")
+            winddown = int(self.config.get(CONF_WINDDOWN, DEFAULT_WINDDOWN))
+            base = datetime.combine(dt_util.now().date(), bedtime)
+            for late in (False, True):
+                start = base - timedelta(minutes=winddown) + timedelta(
+                    minutes=LATE_MINUTES if late else 0
+                )
+                self._unsubs.append(
+                    async_track_time_change(
+                        hass,
+                        partial(self._handle_winddown_time, late),
+                        hour=start.hour,
+                        minute=start.minute,
+                        second=0,
+                    )
+                )
+        self._unsubs.append(
+            async_track_time_interval(
+                hass, self._handle_minute_tick, timedelta(minutes=1)
+            )
+        )
+        self._unsubs.append(
+            async_track_time_interval(
+                hass,
+                self._handle_health_check,
+                timedelta(minutes=HEALTH_INTERVAL_MINUTES),
+            )
+        )
+        self._on_since = dt_util.utcnow() if self.any_light_on() else None
         if self.path_sensors:
             self._unsubs.append(
                 async_track_state_change_event(
@@ -327,7 +388,11 @@ class RoomController:
         self._cancel_off_timer()
         self._cancel_override_timer()
         self._cancel_learn_timer()
+        self._cancel_winddown_timer()
         self._stop_simulation()
+        for issue_id in self._issues:
+            ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+        self._issues.clear()
         while self._unsubs:
             self._unsubs.pop()()
 
@@ -498,6 +563,7 @@ class RoomController:
             "laenger_anwesend": self._is_extended(),
             "gelernter_zuschlag_s": round(self.learned_extra),
             "nachtpfad_aktiv": self._path_active,
+            "schlafenszeit_aktiv": self._sleep_by_bedtime,
         }
 
     @callback
@@ -675,13 +741,25 @@ class RoomController:
 
     @callback
     def _handle_phase_change(self, now: Any) -> None:
+        end = self._time(CONF_NIGHT_END, DEFAULT_NIGHT_END)
+        if (
+            self._sleep_by_bedtime
+            and now is not None
+            and dt_util.as_local(now).time().replace(microsecond=0) == end
+        ):
+            # Morgens: von der Schlafenszeit gesetzten Schlafmodus beenden
+            self._sleep_by_bedtime = False
+            self._sleep = False
+            self._log("Schlafmodus beendet (Nachtende)")
         if not self._enabled or self.away() or self.vacation():
+            self._notify()
             return
         self._apply_phase_if_on()
         self._notify()
 
     @callback
     def _handle_light_event(self, event: Event[EventStateChangedData]) -> None:
+        self._track_usage()
         old: State | None = event.data["old_state"]
         new: State | None = event.data["new_state"]
         if old is None or new is None:
@@ -713,6 +791,193 @@ class RoomController:
                 # damit der manuelle Modus nicht ewig hängen bleibt.
                 self._start_off_timer()
         self._notify()
+
+    # ------------------------------------------------------------------
+    # Willkommenslicht, Schlafenszeit, Leuchtdauer, Gesundheit
+    # ------------------------------------------------------------------
+    @callback
+    def _handle_welcome_event(self, event: Event[EventStateChangedData]) -> None:
+        old: State | None = event.data["old_state"]
+        new: State | None = event.data["new_state"]
+        if new is None or new.state != "home" or (old is not None and old.state == "home"):
+            return
+        if not self._enabled or self.away() or self.vacation() or self._override:
+            return
+        if self.is_dark() and not self.any_light_on():
+            name = new.attributes.get("friendly_name", event.data["entity_id"])
+            self.hass.async_create_task(
+                self._async_turn_on(f"Willkommen: an, weil {name} nach Hause kommt")
+            )
+            if not self.occupied():
+                self._start_off_timer(minimum=WELCOME_MIN_SECONDS)
+            self._notify()
+
+    @callback
+    def _handle_winddown_time(self, late: bool, _now: Any) -> None:
+        self._handle_winddown(late)
+
+    @callback
+    def _handle_winddown(self, late: bool) -> None:
+        """Vor der Schlafenszeit langsam auf Schlaflicht dimmen."""
+        late_entity = self.config.get(CONF_LATE_ENTITY)
+        is_late_day = bool(
+            late_entity
+            and (s := self.hass.states.get(late_entity)) is not None
+            and s.state == STATE_ON
+        )
+        if late != is_late_day or not self._enabled or self.away() or self.vacation():
+            return
+        winddown = int(self.config.get(CONF_WINDDOWN, DEFAULT_WINDDOWN))
+        if self.any_light_on() and not self._override:
+            self.hass.async_create_task(
+                self._async_turn_on(
+                    f"Schlafenszeit: dimmt in {winddown} Minuten auf Schlaflicht",
+                    phase=PHASE_SLEEP,
+                    transition=winddown * 60,
+                )
+            )
+        self._cancel_winddown_timer()
+        self._winddown_timer = async_call_later(
+            self.hass, winddown * 60, self._handle_bedtime
+        )
+        self._notify()
+
+    @callback
+    def _handle_bedtime(self, _now: Any) -> None:
+        self._winddown_timer = None
+        if not self._enabled:
+            return
+        self._sleep_by_bedtime = True
+        if not self._sleep:
+            self._sleep = True
+            self._log("Schlafenszeit: Schlafmodus an")
+        self._notify()
+
+    @callback
+    def _cancel_winddown_timer(self) -> None:
+        if self._winddown_timer is not None:
+            self._winddown_timer()
+            self._winddown_timer = None
+
+    @callback
+    def _track_usage(self) -> None:
+        """Leuchtdauer heute mitzählen."""
+        now = dt_util.utcnow()
+        today = dt_util.now().date().isoformat()
+        if today != self._usage_day:
+            self._usage_day = today
+            self._usage_seconds = 0.0
+            if self._on_since is not None:
+                self._on_since = dt_util.start_of_local_day()
+        on = self.any_light_on()
+        if on and self._on_since is None:
+            self._on_since = now
+        elif not on and self._on_since is not None:
+            self._usage_seconds += (now - self._on_since).total_seconds()
+            self._on_since = None
+            self._save()
+
+    def usage_hours(self) -> float:
+        """Leuchtdauer heute in Stunden."""
+        seconds = self._usage_seconds
+        if self._on_since is not None:
+            seconds += (dt_util.utcnow() - self._on_since).total_seconds()
+        return round(seconds / 3600, 2)
+
+    @callback
+    def _handle_minute_tick(self, _now: Any) -> None:
+        self._track_usage()
+        if self._on_since is not None:
+            self._notify()
+
+    @callback
+    def _handle_health_check(self, _now: Any = None) -> None:
+        """Hängende Melder und dauerhaft offline Lichter als Reparatur melden."""
+        now = dt_util.utcnow()
+        found: dict[str, tuple[str, dict[str, str]]] = {}
+        for entity_id in self.presence_sensors:
+            state = self.hass.states.get(entity_id)
+            if (
+                state is not None
+                and state.state == STATE_ON
+                and now - state.last_changed > timedelta(hours=PRESENCE_STUCK_HOURS)
+            ):
+                found[f"presence_stuck_{self.entry.entry_id}_{entity_id}"] = (
+                    "presence_stuck",
+                    {"room": self.name, "entity": entity_id, "hours": str(PRESENCE_STUCK_HOURS)},
+                )
+        for entity_id in self.lights:
+            state = self.hass.states.get(entity_id)
+            if (
+                state is not None
+                and state.state == STATE_UNAVAILABLE
+                and now - state.last_changed > timedelta(minutes=LIGHT_UNAVAILABLE_MINUTES)
+            ):
+                found[f"light_unavailable_{self.entry.entry_id}_{entity_id}"] = (
+                    "light_unavailable",
+                    {"room": self.name, "entity": entity_id},
+                )
+        for issue_id in self._issues - found.keys():
+            ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+        for issue_id, (key, placeholders) in found.items():
+            ir.async_create_issue(
+                self.hass,
+                DOMAIN,
+                issue_id,
+                is_fixable=False,
+                severity=ir.IssueSeverity.WARNING,
+                translation_key=key,
+                translation_placeholders=placeholders,
+            )
+        self._issues = set(found)
+
+    # ------------------------------------------------------------------
+    # Benachrichtigung per Licht
+    # ------------------------------------------------------------------
+    async def async_flash(self, count: int = 3) -> None:
+        """Lichter kurz blinken lassen und danach wiederherstellen."""
+        lights = [
+            e
+            for e in self.lights
+            if (s := self.hass.states.get(e)) is not None
+            and s.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN)
+        ]
+        if not lights:
+            return
+        before = {e: self.hass.states.get(e) for e in lights}
+        self._log("Benachrichtigung: Licht blinkt")
+        for _ in range(count):
+            for invert in (True, False):
+                context = self._new_context(lights)
+                on = [e for e in lights if (before[e].state == STATE_ON) != invert]
+                off = [e for e in lights if e not in on]
+                if on:
+                    await self.hass.services.async_call(
+                        "light", "turn_on", {ATTR_ENTITY_ID: on, ATTR_BRIGHTNESS: 255},
+                        blocking=False, context=context,
+                    )
+                if off:
+                    await self.hass.services.async_call(
+                        "light", "turn_off", {ATTR_ENTITY_ID: off},
+                        blocking=False, context=context,
+                    )
+                await asyncio.sleep(FLASH_STEP_SECONDS)
+        # Vorherigen Zustand wiederherstellen
+        context = self._new_context(lights)
+        for entity_id, state in before.items():
+            if state.state == STATE_ON:
+                data: dict[str, Any] = {ATTR_ENTITY_ID: entity_id}
+                for attr in (ATTR_BRIGHTNESS, ATTR_COLOR_TEMP_KELVIN):
+                    if state.attributes.get(attr) is not None:
+                        data[attr] = state.attributes[attr]
+                await self.hass.services.async_call(
+                    "light", "turn_on", data, blocking=False, context=context
+                )
+            else:
+                await self.hass.services.async_call(
+                    "light", "turn_off", {ATTR_ENTITY_ID: entity_id},
+                    blocking=False, context=context,
+                )
 
     # ------------------------------------------------------------------
     # Entscheidungslogik
@@ -841,7 +1106,12 @@ class RoomController:
     @callback
     def _save(self) -> None:
         self._store.async_delay_save(
-            lambda: {"learned_extra": self._learned_extra}, 10
+            lambda: {
+                "learned_extra": self._learned_extra,
+                "usage_day": self._usage_day,
+                "usage_seconds": self._usage_seconds,
+            },
+            10,
         )
         self._notify()
 
@@ -934,10 +1204,12 @@ class RoomController:
     # ------------------------------------------------------------------
     # Schalten
     # ------------------------------------------------------------------
-    def _new_context(self, entity_ids: list[str]) -> Context:
+    def _new_context(self, entity_ids: list[str], extra: float = 0) -> Context:
         context = Context()
         self._own_contexts.append(context.id)
-        until = monotonic_time.monotonic() + OWN_CHANGE_GRACE_SECONDS
+        # Während eines Übergangs melden Lampen Zwischenwerte: die gelten
+        # ebenfalls als eigene Änderung.
+        until = monotonic_time.monotonic() + OWN_CHANGE_GRACE_SECONDS + extra
         for entity_id in entity_ids:
             self._own_until[entity_id] = until
         return context
@@ -982,8 +1254,13 @@ class RoomController:
             data[ATTR_COLOR_TEMP_KELVIN] = kelvin
         return data
 
-    async def _async_turn_on(self, reason: str | None) -> None:
-        phase = self.phase()
+    async def _async_turn_on(
+        self,
+        reason: str | None,
+        phase: str | None = None,
+        transition: float | None = None,
+    ) -> None:
+        phase = phase or self.phase()
         scene = self.config.get(conf_scene(phase))
         if scene:
             context = self._new_context(self.lights)
@@ -994,9 +1271,9 @@ class RoomController:
                 "turn_on",
                 {
                     ATTR_ENTITY_ID: scene,
-                    ATTR_TRANSITION: float(
-                        self.config.get(CONF_TRANSITION, DEFAULT_TRANSITION)
-                    ),
+                    ATTR_TRANSITION: transition
+                    if transition is not None
+                    else float(self.config.get(CONF_TRANSITION, DEFAULT_TRANSITION)),
                 },
                 blocking=False,
                 context=context,
@@ -1010,22 +1287,28 @@ class RoomController:
             and (s := self.hass.states.get(e)) is not None
             and s.state == STATE_ON
         ]
-        context = self._new_context(self.lights)
+        context = self._new_context(self.lights, transition or 0)
         if reason:
             self._log(f"{reason} ({phase})")
         for entity_id in targets:
+            data = self._light_on_data(entity_id, phase)
+            if transition is not None:
+                data[ATTR_TRANSITION] = transition
             await self.hass.services.async_call(
                 "light",
                 "turn_on",
-                {ATTR_ENTITY_ID: entity_id, **self._light_on_data(entity_id, phase)},
+                {ATTR_ENTITY_ID: entity_id, **data},
                 blocking=False,
                 context=context,
             )
         if others:
+            off_data: dict[str, Any] = {ATTR_ENTITY_ID: others}
+            if transition is not None:
+                off_data[ATTR_TRANSITION] = transition
             await self.hass.services.async_call(
                 "light",
                 "turn_off",
-                {ATTR_ENTITY_ID: others},
+                off_data,
                 blocking=False,
                 context=context,
             )

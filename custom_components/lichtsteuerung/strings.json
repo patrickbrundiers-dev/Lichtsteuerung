@@ -66,7 +66,11 @@
           "tv_scene": "TV scene",
           "schlaf_scene": "Sleep scene",
           "learning": "Learn off delay",
-          "path_sensors": "Night path: bed sensors"
+          "path_sensors": "Night path: bed sensors",
+          "welcome_persons": "Welcome light for",
+          "bedtime": "Bedtime (optional)",
+          "winddown": "Wind down over",
+          "late_entity": "Later bedtime when on"
         },
         "data_description": {
           "adaptive": "Between day and evening, brightness and color temperature follow the sun elevation.",
@@ -78,7 +82,11 @@
           "away_states": "Comma separated, case insensitive.",
           "vacation_states": "Comma separated, case insensitive.",
           "learning": "If lights are needed again shortly after auto-off, the delay grows; it shrinks slowly after correct offs.",
-          "path_sensors": "At night, when one turns off (got up), the night lights of this room turn on. Back on = off."
+          "path_sensors": "At night, when one turns off (got up), the night lights of this room turn on. Back on = off.",
+          "welcome_persons": "When one of these people arrives home in the dark, lights turn on (at least 5 minutes).",
+          "bedtime": "Lights dim slowly to sleep light before; at bedtime sleep mode turns on. It turns off at night end.",
+          "winddown": "Minutes before bedtime.",
+          "late_entity": "e.g. a no-school sensor: bedtime is 60 minutes later."
         }
       }
     },
@@ -156,7 +164,11 @@
           "tv_scene": "TV scene",
           "schlaf_scene": "Sleep scene",
           "learning": "Learn off delay",
-          "path_sensors": "Night path: bed sensors"
+          "path_sensors": "Night path: bed sensors",
+          "welcome_persons": "Welcome light for",
+          "bedtime": "Bedtime (optional)",
+          "winddown": "Wind down over",
+          "late_entity": "Later bedtime when on"
         },
         "data_description": {
           "adaptive": "Between day and evening, brightness and color temperature follow the sun elevation.",
@@ -168,7 +180,11 @@
           "away_states": "Comma separated, case insensitive.",
           "vacation_states": "Comma separated, case insensitive.",
           "learning": "If lights are needed again shortly after auto-off, the delay grows; it shrinks slowly after correct offs.",
-          "path_sensors": "At night, when one turns off (got up), the night lights of this room turn on. Back on = off."
+          "path_sensors": "At night, when one turns off (got up), the night lights of this room turn on. Back on = off.",
+          "welcome_persons": "When one of these people arrives home in the dark, lights turn on (at least 5 minutes).",
+          "bedtime": "Lights dim slowly to sleep light before; at bedtime sleep mode turns on. It turns off at night end.",
+          "winddown": "Minutes before bedtime.",
+          "late_entity": "e.g. a no-school sensor: bedtime is 60 minutes later."
         }
       }
     },
@@ -239,8 +255,14 @@
           },
           "nachtpfad_aktiv": {
             "name": "Night path active"
+          },
+          "schlafenszeit_aktiv": {
+            "name": "Bedtime active"
           }
         }
+      },
+      "leuchtdauer_heute": {
+        "name": "Light time today"
       }
     },
     "switch": {
@@ -295,6 +317,34 @@
           "description": "Room names. Empty = all rooms."
         }
       }
+    },
+    "flash": {
+      "name": "Light notification",
+      "description": "Flashes the lights briefly, by default only in occupied rooms.",
+      "fields": {
+        "count": {
+          "name": "Count",
+          "description": "How often to flash."
+        },
+        "only_occupied": {
+          "name": "Occupied rooms only",
+          "description": "Only flash where someone is."
+        },
+        "rooms": {
+          "name": "Rooms",
+          "description": "Room names. Empty = all rooms."
+        }
+      }
+    }
+  },
+  "issues": {
+    "presence_stuck": {
+      "title": "Presence sensor stuck: {room}",
+      "description": "{entity} has reported presence for more than {hours} hours. Check battery, sensitivity or position. Lights in {room} stay on meanwhile."
+    },
+    "light_unavailable": {
+      "title": "Light unavailable: {room}",
+      "description": "{entity} has been unavailable for more than an hour. Check power or connection."
     }
   }
 }

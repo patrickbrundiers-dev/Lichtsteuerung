@@ -18,6 +18,11 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .const import (
+    CONF_BEDTIME,
+    CONF_LATE_ENTITY,
+    CONF_WELCOME_PERSONS,
+    CONF_WINDDOWN,
+    DEFAULT_WINDDOWN,
     CONF_LEARNING,
     CONF_PATH_SENSORS,
     CONF_ADAPTIVE,
@@ -184,6 +189,18 @@ def _extras_schema(current: dict[str, Any]) -> dict[Any, Any]:
             ),
             _optional(CONF_PATH_SENSORS, current): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="binary_sensor", multiple=True)
+            ),
+            _optional(CONF_WELCOME_PERSONS, current): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="person", multiple=True)
+            ),
+            _optional(CONF_BEDTIME, current): selector.TimeSelector(),
+            vol.Required(
+                CONF_WINDDOWN, default=current.get(CONF_WINDDOWN, DEFAULT_WINDDOWN)
+            ): minutes,
+            _optional(CONF_LATE_ENTITY, current): selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    domain=["binary_sensor", "input_boolean", "calendar"]
+                )
             ),
             _optional(CONF_BLOCKER_ENTITIES, current): selector.EntitySelector(
                 selector.EntitySelectorConfig(

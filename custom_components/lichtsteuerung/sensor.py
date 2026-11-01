@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
+from homeassistant.const import UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
@@ -19,7 +24,12 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Status-Sensor anlegen."""
-    async_add_entities([RoomStatusSensor(entry.runtime_data, "status")])
+    async_add_entities(
+        [
+            RoomStatusSensor(entry.runtime_data, "status"),
+            RoomUsageSensor(entry.runtime_data, "leuchtdauer_heute"),
+        ]
+    )
 
 
 class RoomStatusSensor(RoomEntity, SensorEntity):
@@ -42,3 +52,18 @@ class RoomStatusSensor(RoomEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Tagesphase, Anwesenheit, Dunkelheit."""
         return self.controller.attributes()
+
+
+class RoomUsageSensor(RoomEntity, SensorEntity):
+    """Wie lange heute mindestens ein Licht im Raum an war."""
+
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_native_unit_of_measurement = UnitOfTime.HOURS
+    _attr_suggested_display_precision = 2
+    _attr_icon = "mdi:lightbulb-on-outline"
+
+    @property
+    def native_value(self) -> float:
+        """Leuchtdauer heute in Stunden."""
+        return self.controller.usage_hours()

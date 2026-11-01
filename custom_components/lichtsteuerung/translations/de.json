@@ -66,7 +66,11 @@
           "tv_scene": "TV: Szene",
           "schlaf_scene": "Schlaf: Szene",
           "learning": "Ausschaltzeit selbst lernen",
-          "path_sensors": "Nachtpfad: Bettsensoren"
+          "path_sensors": "Nachtpfad: Bettsensoren",
+          "welcome_persons": "Willkommenslicht für",
+          "bedtime": "Schlafenszeit (optional)",
+          "winddown": "Runterdimmen über",
+          "late_entity": "Später ins Bett, wenn an"
         },
         "data_description": {
           "adaptive": "Zwischen Tag und Abend gleiten Helligkeit und Farbtemperatur mit der Sonnenhöhe, statt bei Sonnenuntergang zu springen.",
@@ -78,7 +82,11 @@
           "away_states": "Kommagetrennt, Groß/Klein egal.",
           "vacation_states": "Kommagetrennt, Groß/Klein egal.",
           "learning": "Wird das Licht kurz nach dem automatischen Aus wieder gebraucht, verlängert sich die Verzögerung. Nach richtigen Abschaltungen sinkt sie langsam wieder.",
-          "path_sensors": "Nachts: Wird einer davon frei (aufgestanden), gehen die Nachtlichter dieses Raums an. Wieder belegt = aus."
+          "path_sensors": "Nachts: Wird einer davon frei (aufgestanden), gehen die Nachtlichter dieses Raums an. Wieder belegt = aus.",
+          "welcome_persons": "Kommt eine dieser Personen im Dunkeln nach Hause, geht das Licht an (mindestens 5 Minuten).",
+          "bedtime": "Vorher wird langsam auf Schlaflicht gedimmt, zur Schlafenszeit geht der Schlafmodus an. Am Nachtende geht er wieder aus.",
+          "winddown": "Minuten vor der Schlafenszeit.",
+          "late_entity": "z. B. binary_sensor.schulfrei: dann ist die Schlafenszeit 60 Minuten später."
         }
       }
     },
@@ -156,7 +164,11 @@
           "tv_scene": "TV: Szene",
           "schlaf_scene": "Schlaf: Szene",
           "learning": "Ausschaltzeit selbst lernen",
-          "path_sensors": "Nachtpfad: Bettsensoren"
+          "path_sensors": "Nachtpfad: Bettsensoren",
+          "welcome_persons": "Willkommenslicht für",
+          "bedtime": "Schlafenszeit (optional)",
+          "winddown": "Runterdimmen über",
+          "late_entity": "Später ins Bett, wenn an"
         },
         "data_description": {
           "adaptive": "Zwischen Tag und Abend gleiten Helligkeit und Farbtemperatur mit der Sonnenhöhe, statt bei Sonnenuntergang zu springen.",
@@ -168,7 +180,11 @@
           "away_states": "Kommagetrennt, Groß/Klein egal.",
           "vacation_states": "Kommagetrennt, Groß/Klein egal.",
           "learning": "Wird das Licht kurz nach dem automatischen Aus wieder gebraucht, verlängert sich die Verzögerung. Nach richtigen Abschaltungen sinkt sie langsam wieder.",
-          "path_sensors": "Nachts: Wird einer davon frei (aufgestanden), gehen die Nachtlichter dieses Raums an. Wieder belegt = aus."
+          "path_sensors": "Nachts: Wird einer davon frei (aufgestanden), gehen die Nachtlichter dieses Raums an. Wieder belegt = aus.",
+          "welcome_persons": "Kommt eine dieser Personen im Dunkeln nach Hause, geht das Licht an (mindestens 5 Minuten).",
+          "bedtime": "Vorher wird langsam auf Schlaflicht gedimmt, zur Schlafenszeit geht der Schlafmodus an. Am Nachtende geht er wieder aus.",
+          "winddown": "Minuten vor der Schlafenszeit.",
+          "late_entity": "z. B. binary_sensor.schulfrei: dann ist die Schlafenszeit 60 Minuten später."
         }
       }
     },
@@ -239,8 +255,14 @@
           },
           "nachtpfad_aktiv": {
             "name": "Nachtpfad aktiv"
+          },
+          "schlafenszeit_aktiv": {
+            "name": "Schlafenszeit aktiv"
           }
         }
+      },
+      "leuchtdauer_heute": {
+        "name": "Leuchtdauer heute"
       }
     },
     "switch": {
@@ -295,6 +317,34 @@
           "description": "Raumnamen. Leer = alle Räume."
         }
       }
+    },
+    "flash": {
+      "name": "Licht-Benachrichtigung",
+      "description": "Lässt die Lichter kurz blinken, standardmäßig nur in Räumen, in denen gerade jemand ist.",
+      "fields": {
+        "count": {
+          "name": "Anzahl",
+          "description": "Wie oft geblinkt wird."
+        },
+        "only_occupied": {
+          "name": "Nur belegte Räume",
+          "description": "Nur dort blinken, wo gerade jemand ist."
+        },
+        "rooms": {
+          "name": "Räume",
+          "description": "Raumnamen. Leer = alle Räume."
+        }
+      }
+    }
+  },
+  "issues": {
+    "presence_stuck": {
+      "title": "Präsenzmelder hängt: {room}",
+      "description": "{entity} meldet seit über {hours} Stunden ununterbrochen Anwesenheit. Bitte Batterie, Empfindlichkeit oder Position prüfen. Solange bleibt das Licht in {room} an."
+    },
+    "light_unavailable": {
+      "title": "Licht nicht erreichbar: {room}",
+      "description": "{entity} ist seit über einer Stunde nicht erreichbar. Bitte Stromversorgung oder Funkverbindung prüfen."
     }
   }
 }

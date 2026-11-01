@@ -31,6 +31,19 @@ CONF_TRIGGER_SENSORS: Final = "trigger_sensors"
 CONF_BLOCKER_ENTITIES: Final = "blocker_entities"
 CONF_LEARNING: Final = "learning"
 CONF_PATH_SENSORS: Final = "path_sensors"
+CONF_WELCOME_PERSONS: Final = "welcome_persons"
+CONF_BEDTIME: Final = "bedtime"
+CONF_WINDDOWN: Final = "winddown"
+CONF_LATE_ENTITY: Final = "late_entity"
+DEFAULT_WINDDOWN: Final = 20
+LATE_MINUTES: Final = 60
+WELCOME_MIN_SECONDS: Final = 300
+# Blinken: Dauer eines Schritts in Sekunden
+FLASH_STEP_SECONDS: Final = 0.7
+# Gesundheits-Check
+HEALTH_INTERVAL_MINUTES: Final = 10
+PRESENCE_STUCK_HOURS: Final = 6
+LIGHT_UNAVAILABLE_MINUTES: Final = 60
 
 
 def conf_scene(phase: str) -> str:

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
@@ -21,6 +23,9 @@ ATTR_SLEEP = "sleep"
 SERVICE_SET_SLEEP = "set_sleep_mode"
 SERVICE_RESET = "reset"
 SERVICE_SET_ENABLED = "set_enabled"
+SERVICE_FLASH = "flash"
+ATTR_COUNT = "count"
+ATTR_ONLY_OCCUPIED = "only_occupied"
 ATTR_ENABLED = "enabled"
 
 _ROOMS_SCHEMA = {vol.Optional(ATTR_ROOMS): vol.All(cv.ensure_list, [cv.string])}
@@ -54,6 +59,28 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         for controller in _controllers(hass, call):
             controller.async_set_enabled(call.data[ATTR_ENABLED])
 
+    async def flash(call: ServiceCall) -> None:
+        targets = [
+            c
+            for c in _controllers(hass, call)
+            if not call.data[ATTR_ONLY_OCCUPIED] or c.occupied()
+        ]
+        await asyncio.gather(*(c.async_flash(call.data[ATTR_COUNT]) for c in targets))
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_FLASH,
+        flash,
+        schema=vol.Schema(
+            {
+                vol.Optional(ATTR_COUNT, default=3): vol.All(
+                    vol.Coerce(int), vol.Range(min=1, max=10)
+                ),
+                vol.Optional(ATTR_ONLY_OCCUPIED, default=True): cv.boolean,
+                **_ROOMS_SCHEMA,
+            }
+        ),
+    )
     hass.services.async_register(
         DOMAIN,
         SERVICE_SET_SLEEP,
