@@ -356,6 +356,10 @@
     "light_unavailable": {
       "title": "Light unavailable: {room}",
       "description": "{entity} has been unavailable for more than an hour. Check power or connection."
+    },
+    "entity_missing": {
+      "title": "Entity missing: {room}",
+      "description": "{entity} is configured for {room} but does not exist in Home Assistant (anymore). It was probably renamed. Please pick the new entity under Lichtsteuerung → {room} → Configure. If a presence sensor is missing, the light in {room} will not turn on automatically."
     }
   }
 }

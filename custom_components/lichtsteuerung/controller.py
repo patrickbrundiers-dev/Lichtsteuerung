@@ -1040,9 +1040,33 @@ class RoomController:
         if self._on_since is not None:
             self._notify()
 
+    def _configured_entities(self) -> list[str]:
+        """Alle im Raum eingetragenen Entitäten (ohne Doppelte)."""
+        entities: list[str] = []
+        for key in (
+            CONF_LIGHTS,
+            CONF_PRESENCE_SENSORS,
+            CONF_TRIGGER_SENSORS,
+            CONF_PATH_SENSORS,
+            CONF_BLOCKER_ENTITIES,
+            CONF_WELCOME_PERSONS,
+        ):
+            entities.extend(self.config.get(key) or [])
+        for key in (
+            CONF_DARK_SENSOR,
+            CONF_LUX_SENSOR,
+            CONF_MEDIA_ENTITY,
+            CONF_SLEEP_ENTITY,
+            CONF_LATE_ENTITY,
+            CONF_HOUSE_MODE_ENTITY,
+        ):
+            if value := self.config.get(key):
+                entities.append(value)
+        return list(dict.fromkeys(entities))
+
     @callback
     def _handle_health_check(self, _now: Any = None) -> None:
-        """Hängende Melder und dauerhaft offline Lichter als Reparatur melden."""
+        """Hängende Melder, offline Lichter und fehlende Entitäten als Reparatur melden."""
         now = dt_util.utcnow()
         found: dict[str, tuple[str, dict[str, str]]] = {}
         for entity_id in self.presence_sensors:
@@ -1065,6 +1089,12 @@ class RoomController:
             ):
                 found[f"light_unavailable_{self.entry.entry_id}_{entity_id}"] = (
                     "light_unavailable",
+                    {"room": self.name, "entity": entity_id},
+                )
+        for entity_id in self._configured_entities():
+            if self.hass.states.get(entity_id) is None:
+                found[f"entity_missing_{self.entry.entry_id}_{entity_id}"] = (
+                    "entity_missing",
                     {"room": self.name, "entity": entity_id},
                 )
         for issue_id in self._issues - found.keys():
