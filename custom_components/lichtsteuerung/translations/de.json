@@ -356,6 +356,10 @@
     "light_unavailable": {
       "title": "Licht nicht erreichbar: {room}",
       "description": "{entity} ist seit über einer Stunde nicht erreichbar. Bitte Stromversorgung oder Funkverbindung prüfen."
+    },
+    "entity_missing": {
+      "title": "Entität fehlt: {room}",
+      "description": "{entity} ist in {room} eingetragen, gibt es in Home Assistant aber nicht (mehr). Vermutlich wurde sie umbenannt. Bitte unter Lichtsteuerung → {room} → Konfigurieren die neue Entität auswählen. Fehlt ein Melder, geht das Licht in {room} nicht automatisch an."
     }
   }
 }

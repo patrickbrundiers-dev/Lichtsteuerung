@@ -656,6 +656,26 @@ async def test_health_issue(hass, setup, freezer):
     assert [i.translation_key for i in issues] == ["presence_stuck"]
 
 
+async def test_health_issue_missing_entity(hass, setup, freezer):
+    """Umbenannter Melder (Entität fehlt) erzeugt eine Reparaturmeldung."""
+    from homeassistant.helpers import issue_registry as ir
+
+    hass.states.async_remove(PRESENCE)
+    await hass.async_block_till_done()
+    freezer.tick(timedelta(minutes=11))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    issues = [i for i in ir.async_get(hass).issues.values() if i.domain == DOMAIN]
+    assert [i.translation_key for i in issues] == ["entity_missing"]
+    assert issues[0].translation_placeholders["entity"] == PRESENCE
+
+    hass.states.async_set(PRESENCE, "off")
+    freezer.tick(timedelta(minutes=11))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert not [i for i in ir.async_get(hass).issues.values() if i.domain == DOMAIN]
+
+
 LUX = "sensor.wohnzimmer_lux"
 
 
