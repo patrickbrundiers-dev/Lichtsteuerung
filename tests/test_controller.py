@@ -753,6 +753,101 @@ async def test_lux_sensor(hass: HomeAssistant, freezer):
     assert len(turn_on) == 2
 
 
+async def test_lux_bright_after_restart_with_light_on(hass: HomeAssistant, freezer):
+    """Neustart bei brennendem Licht: morgens trotzdem aus, wenn es hell wird."""
+    freezer.move_to(dt_util.now().replace(hour=19, minute=0, second=0))
+    hass.states.async_set("sun.sun", "below_horizon")
+    hass.states.async_set(PRESENCE, "on")
+    hass.states.async_set(DARK, "on")
+    hass.states.async_set(LUX, "8")
+    hass.states.async_set(LIGHT, "on", LIGHT_ATTRS)
+    async_mock_service(hass, "light", "turn_on")
+    turn_off = async_mock_service(hass, "light", "turn_off")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Wohnzimmer",
+        data={},
+        options={
+            CONF_LIGHTS: [LIGHT],
+            CONF_PRESENCE_SENSORS: [PRESENCE],
+            CONF_DARK_SENSOR: DARK,
+            "lux_sensor": LUX,
+            "lux_threshold": 30,
+        },
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    # Melder bleibt an, morgens wird es hell
+    freezer.tick(timedelta(seconds=130))
+    hass.states.async_set(LUX, "11")  # erster Wert mit Lampe
+    await hass.async_block_till_done()
+    hass.states.async_set(DARK, "off")
+    hass.states.async_set(LUX, "50")
+    await hass.async_block_till_done()
+    assert len(turn_off) == 0  # 50 - 11 = 39 lx Tageslicht, noch zu wenig
+    hass.states.async_set(LUX, "80")
+    await hass.async_block_till_done()
+    assert len(turn_off) == 1
+
+
+async def test_lux_ambient_from_unchanged_sensor(hass: HomeAssistant, freezer):
+    """Konstanter Wert ohne neue Meldung zählt beim Einschalten als Wert ohne Lampe."""
+    freezer.move_to(dt_util.now().replace(hour=19, minute=0, second=0))
+    hass.states.async_set("sun.sun", "below_horizon")
+    hass.states.async_set(PRESENCE, "off")
+    hass.states.async_set(LUX, "20")
+    hass.states.async_set(LIGHT, "on", LIGHT_ATTRS)  # z. B. nach Neustart
+    turn_on = async_mock_service(hass, "light", "turn_on")
+    turn_off = async_mock_service(hass, "light", "turn_off")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Wohnzimmer",
+        data={},
+        options={
+            CONF_LIGHTS: [LIGHT],
+            CONF_PRESENCE_SENSORS: [PRESENCE],
+            "lux_sensor": LUX,
+            "lux_threshold": 30,
+            CONF_OFF_DELAY: 60,
+            CONF_DIM_BEFORE_OFF: 0,
+        },
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    # Raum leer -> aus; der Sensor meldet danach nichts Neues (bleibt 20 lx)
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    hass.states.async_set(PRESENCE, "off")
+    await hass.async_block_till_done()
+    freezer.tick(timedelta(seconds=61))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert len(turn_off) == 1
+    _own(hass, turn_off[-1], "off", {"supported_color_modes": ["color_temp"]})
+    await hass.async_block_till_done()
+    freezer.tick(timedelta(minutes=10))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    # Wieder an: 20 lx gelten als Wert ohne Lampe, Lampe bringt 10 lx dazu
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    assert len(turn_on) == 1
+    _own(hass, turn_on[-1], "on")
+    await hass.async_block_till_done()
+    freezer.tick(timedelta(seconds=130))
+    hass.states.async_set(LUX, "30")
+    await hass.async_block_till_done()
+    hass.states.async_set(LUX, "75")  # 75 - 10 = 65 lx Tageslicht
+    await hass.async_block_till_done()
+    assert len(turn_off) == 2
+    assert "hell genug" in hass.states.get(STATUS).attributes["letzte_aktion"]
+
+
 async def test_nobody_home(hass: HomeAssistant, freezer):
     """Niemand zu Hause: nach 5 Minuten aus, kein Einschalten bis jemand kommt."""
     freezer.move_to(dt_util.now().replace(hour=19, minute=0, second=0))

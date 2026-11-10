@@ -85,6 +85,8 @@ LUX_SETTLE_SECONDS: Final = 120
 # Brennendes Licht geht aus, wenn es ohne den eigenen Lichtanteil
 # mindestens so viel heller ist als die Schwelle.
 LUX_BRIGHT_FACTOR: Final = 2.0
+# So alt muss ein Lux-Wert beim Einschalten sein, damit er sicher ohne Lampe gemessen wurde
+LUX_STALE_SECONDS: Final = 5
 DEFAULT_OFF_DELAY: Final = 120
 DEFAULT_DIM_BEFORE_OFF: Final = 20
 DEFAULT_NIGHT_START: Final = "22:30:00"
