@@ -116,6 +116,7 @@ from .const import (
     DEFAULT_LUX_THRESHOLD,
     LUX_BRIGHT_FACTOR,
     LUX_SETTLE_SECONDS,
+    LUX_STALE_SECONDS,
     DEFAULT_NIGHT_END,
     DEFAULT_NIGHT_START,
     DEFAULT_OFF_DELAY,
@@ -586,6 +587,19 @@ class RoomController:
         self._lights_on = now_on
         now = dt_util.utcnow().timestamp()
         if now_on:
+            if now >= self._lux_settle_until:
+                # Licht war lange genug aus: ein Sensorwert von vor dem
+                # Einschalten ist der Wert ohne Lampe. Wichtig, wenn der Sensor
+                # nachts konstant bleibt und deshalb nichts Neues gemeldet hat.
+                entity_id = self.config.get(CONF_LUX_SENSOR)
+                state = self.hass.states.get(entity_id) if entity_id else None
+                value = self._lux_value()
+                if (
+                    state is not None
+                    and value is not None
+                    and now - state.last_updated.timestamp() >= LUX_STALE_SECONDS
+                ):
+                    self._lux_ambient = value
             self._lux_lit = None
             self._lux_measure_after = now + LUX_SETTLE_SECONDS
         else:
@@ -606,9 +620,13 @@ class RoomController:
         if self._lux_lit is None:
             self._lux_lit = lux
             return False
-        if self._override or self._dimmed or self._lux_ambient is None:
+        if self._override or self._dimmed:
             return False
-        own = max(0.0, self._lux_lit - self._lux_ambient)
+        # Ohne gemessenen Wert ohne Lampe (z. B. nach einem Neustart bei
+        # brennendem Licht) vorsichtig rechnen: alles gemessene Licht stammt
+        # von der Lampe. Sonst bliebe das Licht den ganzen Tag an.
+        ambient = self._lux_ambient if self._lux_ambient is not None else 0.0
+        own = max(0.0, self._lux_lit - ambient)
         daylight = lux - own
         if daylight < self._lux_threshold * LUX_BRIGHT_FACTOR:
             return False
