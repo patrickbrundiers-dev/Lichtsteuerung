@@ -87,6 +87,8 @@ LUX_SETTLE_SECONDS: Final = 120
 LUX_BRIGHT_FACTOR: Final = 2.0
 # So alt muss ein Lux-Wert beim Einschalten sein, damit er sicher ohne Lampe gemessen wurde
 LUX_STALE_SECONDS: Final = 5
+# So lange muss es hell bleiben, bevor das Licht wegen Helligkeit ausgeht
+LUX_BRIGHT_CONFIRM_SECONDS: Final = 60
 DEFAULT_OFF_DELAY: Final = 120
 DEFAULT_DIM_BEFORE_OFF: Final = 20
 DEFAULT_NIGHT_START: Final = "22:30:00"

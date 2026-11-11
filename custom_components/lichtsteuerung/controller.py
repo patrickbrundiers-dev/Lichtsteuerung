@@ -117,6 +117,7 @@ from .const import (
     LUX_BRIGHT_FACTOR,
     LUX_SETTLE_SECONDS,
     LUX_STALE_SECONDS,
+    LUX_BRIGHT_CONFIRM_SECONDS,
     DEFAULT_NIGHT_END,
     DEFAULT_NIGHT_START,
     DEFAULT_OFF_DELAY,
@@ -200,6 +201,7 @@ class RoomController:
         self._home_empty_timer: CALLBACK_TYPE | None = None
         self._lux_ambient: float | None = None
         self._lux_lit: float | None = None
+        self._lux_bright_since: float | None = None
         self._lux_settle_until = 0.0
         self._lux_measure_after = 0.0
 
@@ -629,7 +631,16 @@ class RoomController:
         own = max(0.0, self._lux_lit - ambient)
         daylight = lux - own
         if daylight < self._lux_threshold * LUX_BRIGHT_FACTOR:
+            self._lux_bright_since = None
             return False
+        # Ein einzelner heller Ausreißer (Taschenlampe, Autoscheinwerfer)
+        # reicht nicht: es muss über zwei Meldungen hinweg hell bleiben.
+        if self._lux_bright_since is None:
+            self._lux_bright_since = now
+            return False
+        if now - self._lux_bright_since < LUX_BRIGHT_CONFIRM_SECONDS:
+            return False
+        self._lux_bright_since = None
         self._cancel_off_timer()
         self._lux_ambient = None  # danach zählt der echte, helle Messwert
         self.hass.async_create_task(
@@ -750,15 +761,14 @@ class RoomController:
             return  # Nur Attribut-Update (Sonnenhöhe), kein Auf-/Untergang
 
         # Hell geworden (Dunkel-Sensor geht aus): automatisch eingeschaltetes
-        # Licht ausschalten. Gilt nur ohne Lux-Sensor im Raum, denn ein
-        # dunkler Flur bleibt dunkel, auch wenn draußen die Sonne scheint.
+        # Licht ausschalten. Gilt auch mit Lux-Sensor, denn eingeschaltet wird
+        # dann ebenfalls nur, wenn der Dunkel-Sensor dunkel meldet.
         if (
             entity_id == self.config.get(CONF_DARK_SENSOR)
             and old is not None
             and old.state == STATE_ON
             and new is not None
-            and new.state != STATE_ON
-            and not self.config.get(CONF_LUX_SENSOR)
+            and new.state not in (STATE_ON, STATE_UNAVAILABLE, STATE_UNKNOWN)
             and not self._override
             and self.any_light_on()
         ):
