@@ -741,6 +741,10 @@ async def test_lux_sensor(hass: HomeAssistant, freezer):
     # Tageslicht: Lampe ~70 lx, gemessen 150 -> ohne Lampe ~80 lx >= 60
     hass.states.async_set(LUX, "150")
     await hass.async_block_till_done()
+    assert len(turn_off) == 1  # erst bestätigen
+    freezer.tick(timedelta(seconds=61))
+    hass.states.async_set(LUX, "152")
+    await hass.async_block_till_done()
     assert len(turn_off) == 2
     _own(hass, turn_off[-1], "off", {"supported_color_modes": ["color_temp"]})
     await hass.async_block_till_done()
@@ -783,11 +787,13 @@ async def test_lux_bright_after_restart_with_light_on(hass: HomeAssistant, freez
     freezer.tick(timedelta(seconds=130))
     hass.states.async_set(LUX, "11")  # erster Wert mit Lampe
     await hass.async_block_till_done()
-    hass.states.async_set(DARK, "off")
     hass.states.async_set(LUX, "50")
     await hass.async_block_till_done()
     assert len(turn_off) == 0  # 50 - 11 = 39 lx Tageslicht, noch zu wenig
     hass.states.async_set(LUX, "80")
+    await hass.async_block_till_done()
+    freezer.tick(timedelta(seconds=61))
+    hass.states.async_set(LUX, "82")
     await hass.async_block_till_done()
     assert len(turn_off) == 1
 
@@ -844,8 +850,95 @@ async def test_lux_ambient_from_unchanged_sensor(hass: HomeAssistant, freezer):
     await hass.async_block_till_done()
     hass.states.async_set(LUX, "75")  # 75 - 10 = 65 lx Tageslicht
     await hass.async_block_till_done()
+    freezer.tick(timedelta(seconds=61))
+    hass.states.async_set(LUX, "76")
+    await hass.async_block_till_done()
     assert len(turn_off) == 2
     assert "hell genug" in hass.states.get(STATUS).attributes["letzte_aktion"]
+
+
+async def test_lux_spike_does_not_turn_off(hass: HomeAssistant, freezer):
+    """Kurzer heller Ausreißer im Dunkeln schaltet nicht aus."""
+    freezer.move_to(dt_util.now().replace(hour=6, minute=0, second=0))
+    hass.states.async_set("sun.sun", "below_horizon")
+    hass.states.async_set(PRESENCE, "off")
+    hass.states.async_set(LUX, "3")
+    hass.states.async_set(LIGHT, "off", {"supported_color_modes": ["color_temp"]})
+    turn_on = async_mock_service(hass, "light", "turn_on")
+    turn_off = async_mock_service(hass, "light", "turn_off")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Wohnzimmer",
+        data={},
+        options={
+            CONF_LIGHTS: [LIGHT],
+            CONF_PRESENCE_SENSORS: [PRESENCE],
+            "lux_sensor": LUX,
+            "lux_threshold": 30,
+        },
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    _own(hass, turn_on[-1], "on")
+    await hass.async_block_till_done()
+    freezer.tick(timedelta(seconds=130))
+    hass.states.async_set(LUX, "6")
+    await hass.async_block_till_done()
+
+    # 06:23-Fall: 86, 80, 79 lx innerhalb von 40 s, danach wieder dunkel
+    for value, wait in (("86", 0), ("80", 22), ("79", 19), ("6", 120)):
+        freezer.tick(timedelta(seconds=wait))
+        hass.states.async_set(LUX, value)
+        await hass.async_block_till_done()
+    assert len(turn_off) == 0
+
+
+async def test_dark_sensor_off_turns_off_with_lux(hass: HomeAssistant, freezer):
+    """Mit Dunkel- und Lux-Sensor: Dunkel-Sensor meldet hell -> aus."""
+    freezer.move_to(dt_util.now().replace(hour=7, minute=0, second=0))
+    hass.states.async_set("sun.sun", "above_horizon")
+    hass.states.async_set(PRESENCE, "off")
+    hass.states.async_set(DARK, "on")
+    hass.states.async_set(LUX, "10")
+    hass.states.async_set(LIGHT, "off", {"supported_color_modes": ["color_temp"]})
+    turn_on = async_mock_service(hass, "light", "turn_on")
+    turn_off = async_mock_service(hass, "light", "turn_off")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Wohnzimmer",
+        data={},
+        options={
+            CONF_LIGHTS: [LIGHT],
+            CONF_PRESENCE_SENSORS: [PRESENCE],
+            CONF_DARK_SENSOR: DARK,
+            "lux_sensor": LUX,
+            "lux_threshold": 30,
+        },
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    assert len(turn_on) == 1
+    _own(hass, turn_on[-1], "on")
+    await hass.async_block_till_done()
+
+    hass.states.async_set(DARK, "off")
+    await hass.async_block_till_done()
+    assert len(turn_off) == 1
+    _own(hass, turn_off[-1], "off", {"supported_color_modes": ["color_temp"]})
+    await hass.async_block_till_done()
+
+    # Bleibt aus, auch bei Bewegung
+    hass.states.async_set(PRESENCE, "off")
+    await hass.async_block_till_done()
+    hass.states.async_set(PRESENCE, "on")
+    await hass.async_block_till_done()
+    assert len(turn_on) == 1
 
 
 async def test_nobody_home(hass: HomeAssistant, freezer):
